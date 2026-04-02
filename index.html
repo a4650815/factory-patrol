@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>廠區巡檢系統</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg: #0d1117;
+  --bg2: #161b22;
+  --bg3: #1c2128;
+  --border: #30363d;
+  --border2: #21262d;
+  --text: #e6edf3;
+  --text2: #8b949e;
+  --text3: #6e7681;
+  --accent: #f0a500;
+  --accent2: #d4911a;
+  --green: #3fb950;
+  --green-bg: rgba(63,185,80,.12);
+  --red: #f85149;
+  --red-bg: rgba(248,81,73,.12);
+  --blue: #58a6ff;
+  --blue-bg: rgba(88,166,255,.12);
+  --orange: #ff7b33;
+  --orange-bg: rgba(255,123,51,.12);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Subtle grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(240,165,0,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(240,165,0,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── TOP BAR ── */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(13,17,23,.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.topbar-brand { display: flex; align-items: center; gap: 10px; }
+.topbar-brand .logo {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: linear-gradient(135deg, var(--accent), #ff7b33);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; box-shadow: 0 0 16px rgba(240,165,0,.3);
+}
+.topbar-brand h1 { font-size: 16px; font-weight: 700; letter-spacing: .3px; }
+.topbar-brand h1 span { color: var(--accent); }
+.role-toggle {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 5px 12px; cursor: pointer;
+  font-size: 13px; color: var(--text2); transition: all .2s;
+}
+.role-toggle:hover { border-color: var(--accent); color: var(--text); }
+.role-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+/* ── NAV ── */
+.nav-wrap { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0 16px; position: sticky; top: 56px; z-index: 99; }
+.nav-tabs { display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
+.nav-tabs::-webkit-scrollbar { display: none; }
+.nav-tab {
+  flex-shrink: 0; padding: 14px 16px;
+  font-size: 13px; font-weight: 500; color: var(--text2);
+  border: none; background: none; cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all .2s; white-space: nowrap; display: flex; align-items: center; gap: 6px;
+}
+.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.nav-tab:hover:not(.active) { color: var(--text); }
+.nav-tab .tab-badge {
+  background: var(--red); color: white;
+  border-radius: 10px; padding: 1px 6px; font-size: 11px; font-weight: 700;
+}
+
+/* ── CONTENT ── */
+.content { max-width: 900px; margin: 0 auto; padding: 20px 16px; position: relative; z-index: 1; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 14px;
+  position: relative; overflow: hidden;
+}
+.card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(240,165,0,.2), transparent);
+}
+.card-title {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;
+}
+.card-title-left { display: flex; align-items: center; gap: 8px; }
+.section-icon {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+  background: rgba(240,165,0,.12); border: 1px solid rgba(240,165,0,.2);
+}
+
+/* ── QR SCANNER AREA ── */
+.scanner-hero {
+  background: linear-gradient(135deg, #0d1117 0%, #1a1f2e 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 20px;
+  text-align: center;
+  margin-bottom: 14px;
+  position: relative; overflow: hidden;
+}
+.scanner-hero::after {
+  content: '';
+  position: absolute; bottom: -40px; right: -40px;
+  width: 160px; height: 160px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(240,165,0,.06) 0%, transparent 70%);
+}
+.scanner-icon-wrap {
+  width: 80px; height: 80px; border-radius: 20px;
+  background: linear-gradient(135deg, rgba(240,165,0,.15), rgba(255,123,51,.1));
+  border: 1px solid rgba(240,165,0,.25);
+  margin: 0 auto 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 38px;
+  box-shadow: 0 0 30px rgba(240,165,0,.15);
+}
+.scanner-hero h2 { font-size: 20px; font-weight: 900; margin-bottom: 6px; }
+.scanner-hero h2 span { color: var(--accent); }
+.scanner-hero p { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.6; }
+
+/* Camera viewfinder */
+.viewfinder-wrap {
+  position: relative;
+  width: 240px; height: 240px;
+  margin: 0 auto 20px;
+  display: none;
+}
+.viewfinder-wrap.show { display: block; }
+#video-el {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  border-radius: 16px;
+  display: block;
+}
+.vf-corners { position: absolute; inset: 0; pointer-events: none; }
+.vf-corner {
+  position: absolute; width: 24px; height: 24px;
+  border-color: var(--accent); border-style: solid; border-width: 0;
+}
+.vf-corner.tl { top: 0; left: 0; border-top-width: 3px; border-left-width: 3px; border-radius: 4px 0 0 0; }
+.vf-corner.tr { top: 0; right: 0; border-top-width: 3px; border-right-width: 3px; border-radius: 0 4px 0 0; }
+.vf-corner.bl { bottom: 0; left: 0; border-bottom-width: 3px; border-left-width: 3px; border-radius: 0 0 0 4px; }
+.vf-corner.br { bottom: 0; right: 0; border-bottom-width: 3px; border-right-width: 3px; border-radius: 0 0 4px 0; }
+.scan-line {
+  position: absolute; left: 8px; right: 8px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: scanline 2s linear infinite;
+  box-shadow: 0 0 8px var(--accent);
+}
+@keyframes scanline { 0%{top:8px} 100%{top:calc(100% - 8px)} }
+
+.scanner-hint {
+  font-size: 12px; color: var(--text3); margin-top: 8px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 20px; border-radius: var(--radius-sm);
+  font-size: 14px; font-weight: 600; cursor: pointer; border: none;
+  transition: all .2s; font-family: inherit;
+}
+.btn-accent { background: var(--accent); color: #0d1117; }
+.btn-accent:hover { background: #ffc333; box-shadow: 0 0 20px rgba(240,165,0,.3); }
+.btn-ghost {
+  background: transparent; color: var(--text2);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { border-color: var(--text2); color: var(--text); }
+.btn-green { background: var(--green); color: #0d1117; }
+.btn-green:hover { background: #4ec65a; box-shadow: 0 0 16px rgba(63,185,80,.3); }
+.btn-red { background: var(--red); color: white; }
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+.btn-block { width: 100%; justify-content: center; }
+
+/* ── TASK LIST ── */
+.task-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border2);
+  transition: background .15s;
+}
+.task-item:last-child { border-bottom: none; }
+.task-status-icon {
+  width: 42px; height: 42px; border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.task-status-icon.done { background: var(--green-bg); }
+.task-status-icon.pending { background: rgba(240,165,0,.1); }
+.task-status-icon.overdue { background: var(--red-bg); }
+.task-info { flex: 1; min-width: 0; }
+.task-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.task-meta { font-size: 12px; color: var(--text2); margin-top: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.task-checkin-time { font-size: 12px; color: var(--green); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+.task-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 12px; font-weight: 700;
+}
+.badge-green { background: var(--green-bg); color: var(--green); }
+.badge-yellow { background: rgba(240,165,0,.12); color: var(--accent); }
+.badge-red { background: var(--red-bg); color: var(--red); }
+.badge-blue { background: var(--blue-bg); color: var(--blue); }
+.badge-gray { background: rgba(139,148,158,.1); color: var(--text2); }
+.badge-orange { background: var(--orange-bg); color: var(--orange); }
+
+.freq-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; padding: 2px 8px;
+  background: rgba(88,166,255,.1); color: var(--blue);
+  border-radius: 4px; border: 1px solid rgba(88,166,255,.2);
+}
+
+/* ── PROGRESS ── */
+.progress-wrap { display: flex; align-items: center; gap: 12px; }
+.progress-bar-bg { flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+.progress-bar-fill {
+  height: 100%; border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent), #ff7b33);
+  box-shadow: 0 0 8px rgba(240,165,0,.4);
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+}
+.progress-pct { font-size: 22px; font-weight: 900; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+
+/* ── STATS GRID ── */
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 14px; }
+.stat-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; text-align: center;
+}
+.stat-num { font-size: 28px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
+.stat-label { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+/* ── FORMS ── */
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 6px; letter-spacing: .5px; text-transform: uppercase; }
+.form-control {
+  width: 100%; padding: 10px 13px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text);
+  font-size: 14px; font-family: inherit; outline: none;
+  transition: border .2s;
+}
+.form-control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(240,165,0,.1); }
+.form-control option { background: var(--bg3); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+textarea.form-control { resize: vertical; min-height: 80px; }
+
+/* ── QR CODE DISPLAY ── */
+.qr-modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.7); backdrop-filter: blur(6px);
+  z-index: 200; align-items: center; justify-content: center; padding: 16px;
+}
+.qr-modal-overlay.open { display: flex; }
+.qr-modal {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 20px; width: 100%; max-width: 380px;
+  overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,.6);
+}
+.qr-modal-top {
+  background: linear-gradient(135deg, #1a1f2e, #0d1117);
+  padding: 24px; text-align: center; border-bottom: 1px solid var(--border);
+}
+.qr-canvas-wrap {
+  display: inline-block; padding: 14px;
+  background: white; border-radius: 14px;
+  box-shadow: 0 0 30px rgba(240,165,0,.15);
+}
+.qr-modal-body { padding: 20px; }
+.qr-location-name { font-size: 18px; font-weight: 900; text-align: center; margin-bottom: 4px; }
+.qr-meta { text-align: center; font-size: 13px; color: var(--text2); margin-bottom: 16px; }
+.qr-validity {
+  background: rgba(240,165,0,.08); border: 1px solid rgba(240,165,0,.2);
+  border-radius: var(--radius-sm); padding: 12px;
+  text-align: center; font-size: 13px; color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+}
+.validity-bar-bg { height: 4px; background: var(--bg3); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.validity-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 1s linear; }
+
+/* ── CHECKLIST MODAL ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
+  z-index: 200; align-items: flex-end; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 20px 20px 0 0; width: 100%; max-width: 600px;
+  max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 -20px 60px rgba(0,0,0,.4);
+}
+.modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 0; }
+.modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.modal-header h3 { font-size: 16px; font-weight: 700; }
+.modal-body { padding: 20px; }
+.modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
+.close-btn { background: none; border: none; color: var(--text2); font-size: 22px; cursor: pointer; line-height: 1; }
+
+.check-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--border2);
+}
+.check-item:last-child { border-bottom: none; }
+.check-item input[type=checkbox] {
+  width: 18px; height: 18px; margin-top: 1px;
+  accent-color: var(--accent); cursor: pointer; flex-shrink: 0;
+}
+.check-item label { font-size: 14px; color: var(--text); cursor: pointer; line-height: 1.5; }
+
+/* ── ANOMALY ── */
+.severity-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.sev-option {
+  padding: 10px 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg3);
+  cursor: pointer; text-align: center; font-size: 13px; font-weight: 700;
+  color: var(--text2); transition: all .2s;
+}
+.sev-option:hover { border-color: var(--text2); }
+.sev-option.active-low { border-color: var(--accent); background: rgba(240,165,0,.1); color: var(--accent); }
+.sev-option.active-mid { border-color: var(--orange); background: var(--orange-bg); color: var(--orange); }
+.sev-option.active-high { border-color: var(--red); background: var(--red-bg); color: var(--red); }
+
+.atype-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.atype-option {
+  padding: 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--bg3);
+  cursor: pointer; font-size: 13px; color: var(--text2);
+  display: flex; align-items: center; gap: 8px;
+  transition: all .15s;
+}
+.atype-option:hover { border-color: var(--text2); color: var(--text); }
+.atype-option.selected { border-color: var(--accent); background: rgba(240,165,0,.08); color: var(--text); }
+.atype-option input { accent-color: var(--accent); }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text3); border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: .5px; background: var(--bg3); }
+td { padding: 11px 12px; border-bottom: 1px solid var(--border2); color: var(--text); vertical-align: middle; }
+tr:hover td { background: rgba(255,255,255,.02); }
+tr:last-child td { border-bottom: none; }
+
+/* ── QR CODE PRINT PAGE ── */
+.print-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.qr-print-card {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; text-align: center; background: var(--bg3);
+  cursor: pointer; transition: all .2s;
+}
+.qr-print-card:hover { border-color: var(--accent); }
+.qr-mini-canvas { margin: 0 auto 10px; }
+.qr-print-name { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+.qr-print-sub { font-size: 11px; color: var(--text3); }
+
+/* ── SCAN SUCCESS ANIMATION ── */
+.scan-success {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(63,185,80,.08);
+  align-items: center; justify-content: center; flex-direction: column;
+  gap: 12px;
+}
+.scan-success.show { display: flex; animation: fadeInOut .8s ease; }
+@keyframes fadeInOut { 0%{opacity:0;transform:scale(.9)} 20%{opacity:1;transform:scale(1)} 80%{opacity:1} 100%{opacity:0} }
+.scan-success-icon { font-size: 64px; animation: bounce .4s ease; }
+@keyframes bounce { 0%{transform:scale(0)} 60%{transform:scale(1.2)} 100%{transform:scale(1)} }
+.scan-success-text { font-size: 22px; font-weight: 900; color: var(--green); }
+
+/* ── ALERT ── */
+.alert { padding: 12px 16px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 14px; display: flex; gap: 8px; }
+.alert-warning { background: rgba(240,165,0,.08); border-left: 3px solid var(--accent); color: #f5d78e; }
+.alert-success { background: var(--green-bg); border-left: 3px solid var(--green); color: #7ee787; }
+.alert-danger { background: var(--red-bg); border-left: 3px solid var(--red); color: #ff9994; }
+.alert-info { background: var(--blue-bg); border-left: 3px solid var(--blue); color: #a5c8ff; }
+
+/* ── MISC ── */
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.text-muted { color: var(--text2); font-size: 13px; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.gap-8 { gap: 8px; }
+.hidden { display: none !important; }
+
+/* Toast */
+#toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  background: var(--bg2); border: 1px solid var(--border);
+  color: var(--text); padding: 12px 20px; border-radius: 10px;
+  font-size: 14px; font-weight: 600; z-index: 999;
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  display: none; white-space: nowrap;
+}
+#toast.show { display: block; animation: slideUp .3s ease; }
+@keyframes slideUp { from{transform:translateX(-50%) translateY(20px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
+
+/* Photo upload */
+.photo-upload {
+  border: 2px dashed var(--border); border-radius: var(--radius-sm);
+  padding: 20px; text-align: center; cursor: pointer;
+  color: var(--text2); font-size: 13px; transition: border .2s;
+}
+.photo-upload:hover { border-color: var(--accent); color: var(--text); }
+.photo-preview { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.photo-thumb { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); }
+
+@media (max-width: 560px) {
+  .stats-grid { grid-template-columns: repeat(2,1fr); }
+  .form-row { grid-template-columns: 1fr; }
+  .print-grid { grid-template-columns: repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- Scan success overlay -->
+<div class="scan-success" id="scanSuccess">
+  <div class="scan-success-icon">✅</div>
+  <div class="scan-success-text">打卡成功！</div>
+</div>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="logo">🏭</div>
+    <h1>廠區<span>巡檢</span>系統</h1>
+  </div>
+  <div class="role-toggle" onclick="toggleRole()">
+    <div class="role-dot"></div>
+    <span id="roleLabel">課長模式</span>
+  </div>
+</div>
+
+<!-- Nav -->
+<div class="nav-wrap">
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showTab('patrol')">📍 巡檢打卡</button>
+    <button class="nav-tab" onclick="showTab('anomaly')">⚠️ 異常登記 <span class="tab-badge" id="anomalyBadge">2</span></button>
+    <button class="nav-tab" onclick="showTab('schedule')">📅 排程管理</button>
+    <button class="nav-tab" onclick="showTab('records')">📋 巡檢記錄</button>
+    <button class="nav-tab" onclick="showTab('qrcodes')">🔲 QR Code</button>
+    <button class="nav-tab" onclick="showTab('admin')">⚙️ 系統設定</button>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- ══════ TAB: 巡檢打卡 ══════ -->
+<div id="tab-patrol" class="tab-content active">
+
+  <!-- Scanner Hero -->
+  <div class="scanner-hero">
+    <div class="scanner-icon-wrap">🔲</div>
+    <h2>QR Code <span>掃碼</span>打卡</h2>
+    <p>抵達巡檢地點後，對準現場張貼的 QR Code 掃描<br>每個 QR Code 每 <strong style="color:var(--accent)">5 分鐘</strong> 更新一次，防止截圖遠端提交</p>
+
+    <!-- Camera viewfinder -->
+    <div class="viewfinder-wrap" id="viewfinderWrap">
+      <video id="video-el" playsinline autoplay muted></video>
+      <div class="vf-corners">
+        <div class="vf-corner tl"></div>
+        <div class="vf-corner tr"></div>
+        <div class="vf-corner bl"></div>
+        <div class="vf-corner br"></div>
+      </div>
+      <div class="scan-line"></div>
+    </div>
+    <div class="scanner-hint" id="scannerHint"></div>
+
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:4px">
+      <button class="btn btn-accent" id="startScanBtn" onclick="startScan()">📷 開啟相機掃描</button>
+      <button class="btn btn-ghost hidden" id="stopScanBtn" onclick="stopScan()">✕ 關閉相機</button>
+      <button class="btn btn-ghost" onclick="simulateScan()">🔲 模擬掃碼（Demo）</button>
+    </div>
+  </div>
+
+  <!-- 今日任務 -->
+  <div class="card">
+    <div class="card-title">
+      <div class="card-title-left">
+        <div class="section-icon">📋</div>
+        <span>今日巡檢任務</span>
+      </div>
+      <span class="badge badge-yellow" id="pendingBadge">3 待完成</span>
+    </div>
+    <div id="taskList"></div>
+  </div>
+
+  <!-- 完成率 -->
+  <div class="card">
+    <div class="card-title">
+      <div class="card-title-left"><div class="section-icon">📊</div><span>本日完成率</span></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar" style="width:40%"></div></div>
+      <div class="progress-pct" id="progressPct">40%</div>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-top:8px" id="progressText">已完成 2 / 5 個巡檢點</div>
+  </div>
+
+</div>
+
+<!-- ══════ TAB: 異常登記 ══════ -->
+<div id="tab-anomaly" class="tab-content">
+
+  <div class="alert alert-warning">⚠️ 若遇緊急狀況請立即通報主管，嚴重異常系統將自動推送告警</div>
+
+  <div class="card">
+    <div class="card-title">
+      <div class="card-title-left"><div class="section-icon">📝</div><span>新增異常記錄</span></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">異常地點 *</label>
+      <select class="form-control" id="anomalyLocation">
+        <option value="">請選擇地點</option>
+        <option>A棟 - 生產線一</option><option>A棟 - 生產線二</option>
+        <option>B棟 - 倉儲區</option><option>B棟 - 裝卸月台</option>
+        <option>C棟 - 空壓機房</option><option>戶外 - 消防設備區</option><option>廠務辦公區</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">異常類別 *</label>
+      <div class="atype-grid" id="atypeGrid">
+        <label class="atype-option" onclick="selectAtype(this,'機械設備')"><input type="radio" name="atype" value="機械設備" style="display:none"> 🔧 機械設備</label>
+        <label class="atype-option" onclick="selectAtype(this,'電氣系統')"><input type="radio" name="atype" value="電氣系統" style="display:none"> ⚡ 電氣系統</label>
+        <label class="atype-option" onclick="selectAtype(this,'環境衛生')"><input type="radio" name="atype" value="環境衛生" style="display:none"> 🧹 環境衛生</label>
+        <label class="atype-option" onclick="selectAtype(this,'消防安全')"><input type="radio" name="atype" value="消防安全" style="display:none"> 🔥 消防安全</label>
+        <label class="atype-option" onclick="selectAtype(this,'管線洩漏')"><input type="radio" name="atype" value="管線洩漏" style="display:none"> 💧 管線洩漏</label>
+        <label class="atype-option" onclick="selectAtype(this,'其他')"><input type="radio" name="atype" value="其他" style="display:none"> 📌 其他</label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">嚴重程度 *</label>
+      <div class="severity-grid">
+        <div class="sev-option" onclick="setSeverity('low',this)">🟡 輕微</div>
+        <div class="sev-option" onclick="setSeverity('mid',this)">🟠 中度</div>
+        <div class="sev-option" onclick="setSeverity('high',this)">🔴 嚴重</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">異常描述 *</label>
+      <textarea class="form-control" id="anomalyDesc" placeholder="請詳細描述異常狀況、位置、現象..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">現場照片</label>
+      <div class="photo-upload" onclick="document.getElementById('photoInput').click()">
+        📷 點擊拍照或上傳圖片（最多 5 張）
+      </div>
+      <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="previewPhotos(this)">
+      <div class="photo-preview" id="photoPreview"></div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">初步處置</label>
+        <textarea class="form-control" id="anomalyAction" placeholder="已採取的措施..." style="min-height:60px"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">回報主管</label>
+        <select class="form-control" id="anomalyReport">
+          <option>廠務課長</option><option>設備組長</option><option>安全衛生組</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="btn btn-red btn-block" onclick="submitAnomaly()" style="margin-top:4px">⚠️ 提交異常報告</button>
+  </div>
+
+  <!-- 異常追蹤 -->
+  <div class="card">
+    <div class="card-title">
+      <div class="card-title-left"><div class="section-icon">📋</div><span>近期異常追蹤</span></div>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>時間</th><th>地點</th><th>類別</th><th>程度</th><th>狀態</th><th></th></tr></thead>
+      <tbody id="anomalyList"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ TAB: 排程管理 ══════ -->
+<div id="tab-schedule" class="tab-content">
+  <div class="card">
+    <div class="card-title">
+      <div class="card-title-left"><div class="section-icon">📅</div><span>巡檢排程</span></div>
+      <button class="btn btn-accent btn-sm" onclick="openModal('scheduleModal')">＋ 新增</button>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>地點</th><th>頻率</th><th>負責人</th><th>時段</th><th>範本</th><th>狀態</th></tr></thead>
+      <tbody id="scheduleList"></tbody></table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><div class="card-title-left"><div class="section-icon">👥</div><span>人員週達成率</span></div></div>
+    <div id="staffRateList"></div>
+  </div>
+</div>
+
+<!-- ══════ TAB: 巡檢記錄 ══════ -->
+<div id="tab-records" class="tab-content">
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-num" style="color:var(--green)">94<small style="font-size:14px">%</small></div><div class="stat-label">本月達成率</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--blue)">127</div><div class="stat-label">本月巡檢次數</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--orange)">8</div><div class="stat-label">本月異常件數</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--accent)">6</div><div class="stat-label">已結案</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">
+      <div class="card-title-left"><div class="section-icon">📋</div><span>打卡記錄</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📥 匯出</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <select class="form-control" style="width:auto;flex:1"><option>全部人員</option><option>陳大明</option><option>林小華</option><option>王建國</option></select>
+      <input type="date" class="form-control" style="width:auto;flex:1">
+      <select class="form-control" style="width:auto;flex:1"><option>全部狀態</option><option>正常</option><option>異常</option></select>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr><th>日期時間</th><th>人員</th><th>地點</th><th>驗證方式</th><th>QR時戳</th><th>用時</th><th>結果</th></tr></thead>
+      <tbody id="recordsList"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ TAB: QR Code 管理 ══════ -->
+<div id="tab-qrcodes" class="tab-content">
+  <div class="alert alert-info">ℹ️ 以下 QR Code 請列印後張貼於各巡檢地點顯眼處。掃描後系統會驗證時間戳，每 5 分鐘輪換一次動態碼以防截圖冒用。</div>
+
+  <div class="card">
+    <div class="card-title">
+      <div class="card-title-left"><div class="section-icon">🔲</div><span>各巡檢點 QR Code</span></div>
+      <button class="btn btn-accent btn-sm" onclick="window.print()">🖨️ 全部列印</button>
+    </div>
+    <div class="print-grid" id="qrGrid"></div>
+  </div>
+
+  <!-- Dynamic QR preview -->
+  <div class="card">
+    <div class="card-title"><div class="card-title-left"><div class="section-icon">⏱️</div><span>動態防偽說明</span></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:16px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--accent)">🔲 靜態 QR Code（張貼用）</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.7">
+          ✅ 列印張貼在現場<br>
+          ✅ 永久有效，隨時可列印補貼<br>
+          ⚠️ 包含地點識別碼<br>
+          ⚠️ 需搭配時間窗口驗證
+        </div>
+      </div>
+      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:16px;">
+        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--green)">🛡️ 時間窗口驗證邏輯</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.7">
+          ✅ 掃描時記錄精確時間戳<br>
+          ✅ 比對巡檢排程時間是否吻合<br>
+          ✅ 超出時間窗口 ±15分 則警示<br>
+          ✅ 同一地點 30 分內重複掃描警示
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ TAB: 系統設定 ══════ -->
+<div id="tab-admin" class="tab-content">
+  <div class="alert alert-info">ℹ️ 系統設定僅限課長層級操作</div>
+
+  <div class="card">
+    <div class="card-title">
+      <div class="card-title-left"><div class="section-icon">📍</div><span>巡檢地點管理</span></div>
+      <button class="btn btn-accent btn-sm" onclick="openModal('locationModal')">＋ 新增地點</button>
+    </div>
+    <div id="locationList"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="card-title-left"><div class="section-icon">⚙️</div><span>打卡驗證設定</span></div></div>
+    <div class="form-group">
+      <label class="form-label">QR Code 時間窗口（分鐘）</label>
+      <input type="number" class="form-control" value="15" id="timeWindow">
+      <div class="text-muted" style="margin-top:5px">排程時間前後 ±N 分鐘內掃描視為正常</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">重複掃描鎖定時間（分鐘）</label>
+      <input type="number" class="form-control" value="30" id="dupeLock">
+      <div class="text-muted" style="margin-top:5px">同一地點同一人員，N 分鐘內重複掃描將警示</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">漏檢告警（超時多少分鐘後通知）</label>
+      <input type="number" class="form-control" value="20">
+    </div>
+    <div class="form-group">
+      <label class="form-label">嚴重異常通知對象</label>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" checked style="accent-color:var(--accent)"> 廠務課長</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" checked style="accent-color:var(--accent)"> 安全衛生組</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" style="accent-color:var(--accent)"> 廠長</label>
+      </div>
+    </div>
+    <button class="btn btn-accent">💾 儲存設定</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="card-title-left"><div class="section-icon">✅</div><span>巡檢項目範本</span></div></div>
+    <div id="templatesAdmin"></div>
+  </div>
+</div>
+
+</div><!-- end .content -->
+
+<!-- ══════ QR CODE DISPLAY MODAL ══════ -->
+<div class="qr-modal-overlay" id="qrDisplayModal">
+  <div class="qr-modal">
+    <div class="qr-modal-top">
+      <div class="qr-canvas-wrap"><div id="qrModalCanvas"></div></div>
+    </div>
+    <div class="qr-modal-body">
+      <div class="qr-location-name" id="qrModalName">—</div>
+      <div class="qr-meta" id="qrModalMeta">—</div>
+      <div class="qr-validity">
+        <div>⏱️ 時間戳有效至 <span id="validUntil" class="mono">—</span></div>
+        <div class="validity-bar-bg"><div class="validity-bar-fill" id="validityBar" style="width:100%"></div></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="closeQrModal()">關閉</button>
+        <button class="btn btn-accent btn-sm" style="flex:1" onclick="window.print()">🖨️ 列印</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ CHECKLIST MODAL ══════ -->
+<div class="modal-overlay" id="checklistModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 id="checklistModalTitle">📋 巡檢確認</h3>
+      <button class="close-btn" onclick="closeModal('checklistModal')">✕</button>
+    </div>
+    <div class="modal-body" id="checklistModalBody"></div>
+    <div class="modal-footer">
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" style="flex:1" onclick="closeModal('checklistModal')">取消</button>
+        <button class="btn btn-green" style="flex:1" id="confirmCheckinBtn" onclick="confirmCheckin()">✅ 完成打卡</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ SCHEDULE MODAL ══════ -->
+<div class="modal-overlay" id="scheduleModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><h3>📅 新增巡檢排程</h3><button class="close-btn" onclick="closeModal('scheduleModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">巡檢地點 *</label>
+        <select class="form-control" id="sched_location"><option>A棟 - 生產線一</option><option>A棟 - 生產線二</option><option>B棟 - 倉儲區</option><option>C棟 - 空壓機房</option><option>戶外 - 消防設備區</option></select></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">頻率 *</label>
+          <select class="form-control" id="sched_freq"><option>每小時</option><option>每2小時</option><option>每4小時</option><option selected>每班一次</option><option>每日一次</option><option>每週一次</option></select></div>
+        <div class="form-group"><label class="form-label">負責人 *</label>
+          <select class="form-control" id="sched_staff"><option>陳大明</option><option>林小華</option><option>王建國</option><option>張美玲</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">開始</label><input type="time" class="form-control" id="sched_start" value="08:00"></div>
+        <div class="form-group"><label class="form-label">結束</label><input type="time" class="form-control" id="sched_end" value="17:00"></div>
+      </div>
+      <div class="form-group"><label class="form-label">巡檢範本</label>
+        <select class="form-control" id="sched_template"><option>設備日常巡檢</option><option>消防安全巡檢</option><option>環境衛生巡檢</option><option>電氣設備巡檢</option></select></div>
+    </div>
+    <div class="modal-footer"><div style="display:flex;gap:10px"><button class="btn btn-ghost" style="flex:1" onclick="closeModal('scheduleModal')">取消</button><button class="btn btn-accent" style="flex:1" onclick="addSchedule()">新增排程</button></div></div>
+  </div>
+</div>
+
+<!-- ══════ LOCATION MODAL ══════ -->
+<div class="modal-overlay" id="locationModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><h3>📍 新增巡檢地點</h3><button class="close-btn" onclick="closeModal('locationModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">地點名稱 *</label><input type="text" class="form-control" id="loc_name" placeholder="例：A棟 - 生產線三"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">樓棟</label><select class="form-control" id="loc_building"><option>A棟</option><option>B棟</option><option>C棟</option><option>戶外</option><option>廠務辦公區</option></select></div>
+        <div class="form-group"><label class="form-label">樓層</label><input type="text" class="form-control" id="loc_floor" placeholder="例：1F、B1"></div>
+      </div>
+      <div class="form-group"><label class="form-label">地點描述</label><textarea class="form-control" id="loc_desc" placeholder="位置說明、注意事項..." style="min-height:60px"></textarea></div>
+    </div>
+    <div class="modal-footer"><div style="display:flex;gap:10px"><button class="btn btn-ghost" style="flex:1" onclick="closeModal('locationModal')">取消</button><button class="btn btn-accent" style="flex:1" onclick="addLocation()">新增地點</button></div></div>
+  </div>
+</div>
+
+<!-- Anomaly detail modal -->
+<div class="modal-overlay" id="anomalyDetailModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><h3>⚠️ 異常詳情</h3><button class="close-btn" onclick="closeModal('anomalyDetailModal')">✕</button></div>
+    <div class="modal-body" id="anomalyDetailBody"></div>
+    <div class="modal-footer"><button class="btn btn-ghost btn-block" onclick="closeModal('anomalyDetailModal')">關閉</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════
+//  STATE
+// ══════════════════════════════
+const S = {
+  role: 'manager',
+  severity: null,
+  atype: null,
+  selectedTask: null,
+  scanActive: false,
+  scanStream: null,
+  qrTimers: {},
+  lastScan: {}, // locationId -> timestamp
+
+  tasks: [
+    { id:1, location:'A棟 - 生產線一', time:'08:00', freq:'每班一次', staff:'陳大明', status:'done', checkedAt:'08:03', template:'設備日常巡檢' },
+    { id:2, location:'B棟 - 倉儲區', time:'10:00', freq:'每4小時', staff:'林小華', status:'done', checkedAt:'10:07', template:'環境衛生巡檢' },
+    { id:3, location:'C棟 - 空壓機房', time:'12:00', freq:'每4小時', staff:'陳大明', status:'pending', checkedAt:null, template:'電氣設備巡檢' },
+    { id:4, location:'戶外 - 消防設備區', time:'11:00', freq:'每週一次', staff:'王建國', status:'overdue', checkedAt:null, template:'消防安全巡檢' },
+    { id:5, location:'A棟 - 生產線二', time:'14:00', freq:'每班一次', staff:'張美玲', status:'pending', checkedAt:null, template:'設備日常巡檢' },
+  ],
+
+  anomalies: [
+    { id:1, time:'04/02 09:15', location:'A棟 - 生產線一', type:'機械設備', severity:'mid', desc:'傳送帶異音，目測接縫處磨損', status:'處理中' },
+    { id:2, time:'04/02 11:30', location:'C棟 - 空壓機房', type:'管線洩漏', severity:'high', desc:'空壓管接頭滲漏，已暫時夾緊', status:'待處理' },
+    { id:3, time:'04/01 14:20', location:'B棟 - 倉儲區', type:'環境衛生', severity:'low', desc:'排水溝積水未清除', status:'已結案' },
+  ],
+
+  schedules: [
+    { id:1, location:'A棟 - 生產線一', freq:'每班一次', staff:'陳大明', start:'08:00', end:'17:00', template:'設備日常巡檢', active:true },
+    { id:2, location:'A棟 - 生產線二', freq:'每班一次', staff:'張美玲', start:'08:00', end:'17:00', template:'設備日常巡檢', active:true },
+    { id:3, location:'B棟 - 倉儲區', freq:'每4小時', staff:'林小華', start:'08:00', end:'20:00', template:'環境衛生巡檢', active:true },
+    { id:4, location:'C棟 - 空壓機房', freq:'每4小時', staff:'陳大明', start:'08:00', end:'20:00', template:'電氣設備巡檢', active:true },
+    { id:5, location:'戶外 - 消防設備區', freq:'每週一次', staff:'王建國', start:'09:00', end:'10:00', template:'消防安全巡檢', active:true },
+  ],
+
+  records: [
+    { date:'2025-04-02 08:03', staff:'陳大明', location:'A棟 - 生產線一', method:'QR掃描', ts:'08:03:21', dur:'12分鐘', result:'正常' },
+    { date:'2025-04-02 10:07', staff:'林小華', location:'B棟 - 倉儲區', method:'QR掃描', ts:'10:07:44', dur:'18分鐘', result:'異常' },
+    { date:'2025-04-01 14:55', staff:'王建國', location:'戶外 - 消防設備區', method:'QR掃描', ts:'14:55:09', dur:'25分鐘', result:'正常' },
+    { date:'2025-04-01 10:20', staff:'張美玲', location:'A棟 - 生產線二', method:'QR掃描', ts:'10:20:33', dur:'15分鐘', result:'正常' },
+  ],
+
+  locations: [
+    { id:'LOC001', name:'A棟 - 生產線一', building:'A棟', floor:'1F', desc:'東側主生產線' },
+    { id:'LOC002', name:'A棟 - 生產線二', building:'A棟', floor:'1F', desc:'西側副生產線' },
+    { id:'LOC003', name:'B棟 - 倉儲區', building:'B棟', floor:'1F', desc:'含裝卸月台' },
+    { id:'LOC004', name:'C棟 - 空壓機房', building:'C棟', floor:'B1', desc:'地下機房' },
+    { id:'LOC005', name:'戶外 - 消防設備區', building:'戶外', floor:'-', desc:'廠區西北角' },
+  ],
+
+  staff: [
+    { name:'陳大明', shift:'日班', areas:'A棟、C棟', rate:95 },
+    { name:'林小華', shift:'日班', areas:'B棟', rate:88 },
+    { name:'王建國', shift:'夜班', areas:'全廠戶外', rate:100 },
+    { name:'張美玲', shift:'日班', areas:'A棟', rate:92 },
+  ],
+
+  templates: {
+    '設備日常巡檢': ['設備運轉狀態正常','油位/油質目視檢查','異音/異味確認','溫度指示正常','安全護罩完整'],
+    '消防安全巡檢': ['滅火器外觀及壓力正常','消防箱門鎖完整','緊急出口暢通無阻','灑水頭無遮蔽物','消防栓標示清楚','偵煙器無異狀','緊急照明正常'],
+    '環境衛生巡檢': ['地面清潔無積水','廢棄物依規分類','通道無雜物堆積','排水溝暢通'],
+    '電氣設備巡檢': ['配電盤門鎖完整','無異味/焦味','接地線完整','線路無破損外露','過載保護器正常'],
+  }
+};
+
+// ══════════════════════════════
+//  RENDER
+// ══════════════════════════════
+function renderAll() {
+  renderTasks(); renderAnomalies(); renderSchedules();
+  renderRecords(); renderLocations(); renderStaffRates();
+  renderQRGrid(); renderTemplatesAdmin(); updateProgress();
+}
+
+function renderTasks() {
+  const done = S.tasks.filter(t=>t.status==='done').length;
+  const pending = S.tasks.filter(t=>t.status!=='done').length;
+  const el = document.getElementById('pendingBadge');
+  if(el) el.textContent = pending+' 待完成';
+  const list = document.getElementById('taskList');
+  if(!list) return;
+  const statusIcon = {done:'✅',pending:'🔲',overdue:'⏰'};
+  list.innerHTML = S.tasks.map(t=>`
+    <div class="task-item">
+      <div class="task-status-icon ${t.status}">${statusIcon[t.status]}</div>
+      <div class="task-info">
+        <div class="task-name">${t.location}</div>
+        <div class="task-meta">
+          <span>⏰ ${t.time}</span>
+          <span>👤 ${t.staff}</span>
+          <span class="freq-tag">${t.freq}</span>
+        </div>
+        ${t.checkedAt?`<div class="task-checkin-time">✅ ${t.checkedAt} QR掃描完成</div>`:''}
+      </div>
+      <div class="task-actions">
+        <span class="badge ${t.status==='done'?'badge-green':t.status==='overdue'?'badge-red':'badge-yellow'}">
+          ${t.status==='done'?'已完成':t.status==='overdue'?'逾時':'待巡檢'}
+        </span>
+        ${t.status!=='done'?`<button class="btn btn-accent btn-sm" onclick="openChecklist(${t.id})">🔲 打卡</button>`:''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateProgress() {
+  const done = S.tasks.filter(t=>t.status==='done').length;
+  const total = S.tasks.length;
+  const pct = Math.round(done/total*100);
+  const bar = document.getElementById('progressBar');
+  if(bar) bar.style.width = pct+'%';
+  const p = document.getElementById('progressPct');
+  if(p) p.textContent = pct+'%';
+  const t = document.getElementById('progressText');
+  if(t) t.textContent = `已完成 ${done} / ${total} 個巡檢點`;
+}
+
+function renderAnomalies() {
+  const sevMap = {low:{label:'輕微',cls:'badge-yellow'},mid:{label:'中度',cls:'badge-orange'},high:{label:'嚴重',cls:'badge-red'}};
+  const stMap = {'處理中':'badge-blue','待處理':'badge-red','已結案':'badge-green'};
+  const tbody = document.getElementById('anomalyList');
+  if(!tbody) return;
+  tbody.innerHTML = S.anomalies.map(a=>`
+    <tr>
+      <td class="mono" style="font-size:12px">${a.time}</td>
+      <td>${a.location}</td>
+      <td>${a.type}</td>
+      <td><span class="badge ${sevMap[a.severity]?.cls}">${sevMap[a.severity]?.label}</span></td>
+      <td><span class="badge ${stMap[a.status]||'badge-gray'}">${a.status}</span></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="viewAnomaly(${a.id})">查看</button></td>
+    </tr>
+  `).join('');
+  const badge = document.getElementById('anomalyBadge');
+  if(badge) {
+    const pending = S.anomalies.filter(a=>a.status==='待處理').length;
+    badge.textContent = pending; badge.style.display = pending?'':'none';
+  }
+}
+
+function renderSchedules() {
+  const tbody = document.getElementById('scheduleList');
+  if(!tbody) return;
+  tbody.innerHTML = S.schedules.map(s=>`
+    <tr>
+      <td><strong>${s.location}</strong></td>
+      <td><span class="freq-tag">${s.freq}</span></td>
+      <td>${s.staff}</td>
+      <td class="mono" style="font-size:12px">${s.start}~${s.end}</td>
+      <td style="font-size:12px;color:var(--text2)">${s.template}</td>
+      <td><span class="badge ${s.active?'badge-green':'badge-gray'}">${s.active?'啟用':'停用'}</span></td>
+    </tr>
+  `).join('');
+}
+
+function renderRecords() {
+  const tbody = document.getElementById('recordsList');
+  if(!tbody) return;
+  const rcls = {正常:'badge-green',異常:'badge-red'};
+  tbody.innerHTML = S.records.map(r=>`
+    <tr>
+      <td class="mono" style="font-size:12px">${r.date}</td>
+      <td>${r.staff}</td>
+      <td>${r.location}</td>
+      <td><span class="badge badge-blue">${r.method}</span></td>
+      <td class="mono" style="font-size:12px">${r.ts}</td>
+      <td style="font-size:12px">${r.dur}</td>
+      <td><span class="badge ${rcls[r.result]||'badge-gray'}">${r.result}</span></td>
+    </tr>
+  `).join('');
+}
+
+function renderLocations() {
+  const list = document.getElementById('locationList');
+  if(!list) return;
+  list.innerHTML = S.locations.map((l,i)=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2)">
+      <div style="width:38px;height:38px;border-radius:10px;background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.2);display:flex;align-items:center;justify-content:center;font-size:18px">📍</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px">${l.name}</div>
+        <div style="font-size:12px;color:var(--text2)">${l.building} ${l.floor} &nbsp;|&nbsp; ${l.desc}</div>
+        <div style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace">ID: ${l.id}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="showQRModal('${l.id}')">🔲 QR</button>
+        <button class="btn btn-sm" style="background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,.3)" onclick="removeLocation(${i})">刪</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderStaffRates() {
+  const el = document.getElementById('staffRateList');
+  if(!el) return;
+  el.innerHTML = S.staff.map(s=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2)">
+      <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--orange));display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:#0d1117">${s.name[0]}</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px">${s.name} <span style="font-size:12px;color:var(--text2);font-weight:400">${s.shift}</span></div>
+        <div style="font-size:12px;color:var(--text2)">${s.areas}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;min-width:120px">
+        <div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden">
+          <div style="width:${s.rate}%;height:100%;background:${s.rate>=90?'var(--green)':s.rate>=75?'var(--accent)':'var(--red)'};border-radius:3px"></div>
+        </div>
+        <span class="mono" style="font-size:13px;font-weight:700;color:${s.rate>=90?'var(--green)':s.rate>=75?'var(--accent)':'var(--red)'}">${s.rate}%</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderQRGrid() {
+  const grid = document.getElementById('qrGrid');
+  if(!grid) return;
+  grid.innerHTML = S.locations.map(l=>`
+    <div class="qr-print-card" onclick="showQRModal('${l.id}')">
+      <div class="qr-mini-canvas" id="mini_${l.id}"></div>
+      <div class="qr-print-name">${l.name}</div>
+      <div class="qr-print-sub">${l.building} ${l.floor} &nbsp;·&nbsp; <span class="mono">${l.id}</span></div>
+    </div>
+  `).join('');
+  // Render mini QRs
+  setTimeout(()=>{
+    S.locations.forEach(l=>{
+      const el = document.getElementById('mini_'+l.id);
+      if(el && el.childElementCount === 0) {
+        try {
+          new QRCode(el, { text: JSON.stringify({loc:l.id,name:l.name,ts:'STATIC'}), width:100, height:100, colorDark:'#000', colorLight:'#fff', correctLevel:QRCode.CorrectLevel.M });
+        } catch(e) {}
+      }
+    });
+  }, 200);
+}
+
+function renderTemplatesAdmin() {
+  const el = document.getElementById('templatesAdmin');
+  if(!el) return;
+  el.innerHTML = Object.entries(S.templates).map(([name,items])=>`
+    <div style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px">📋 ${name}</div>
+      ${items.map(item=>`<div style="font-size:13px;color:var(--text2);padding:4px 0;display:flex;gap:8px"><span style="color:var(--border)">▸</span>${item}</div>`).join('')}
+      <div style="height:1px;background:var(--border2);margin-top:12px"></div>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════
+//  QR CODE MODAL
+// ══════════════════════════════
+let validityTimer = null;
+
+function showQRModal(locId) {
+  const loc = S.locations.find(l=>l.id===locId);
+  if(!loc) return;
+  const canvas = document.getElementById('qrModalCanvas');
+  canvas.innerHTML = '';
+  const qrData = JSON.stringify({ loc: locId, name: loc.name, type: 'FACTORY_PATROL', v: '1' });
+  try { new QRCode(canvas, { text: qrData, width: 200, height: 200, colorDark:'#000000', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.H }); }
+  catch(e) { canvas.textContent = '⚠️ QR 產生失敗'; }
+  document.getElementById('qrModalName').textContent = loc.name;
+  document.getElementById('qrModalMeta').textContent = `${loc.building} ${loc.floor} · ${loc.desc} · ID: ${loc.id}`;
+  startValidityCountdown();
+  document.getElementById('qrDisplayModal').classList.add('open');
+}
+
+function startValidityCountdown() {
+  if(validityTimer) clearInterval(validityTimer);
+  const windowSec = 5 * 60; // 5 minutes
+  let elapsed = 0;
+  const now = new Date();
+  const windowEnd = new Date(Math.ceil(now.getTime()/(windowSec*1000))*(windowSec*1000));
+  const update = () => {
+    const remaining = Math.max(0, Math.floor((windowEnd - new Date())/1000));
+    const mins = Math.floor(remaining/60), secs = remaining%60;
+    const vu = document.getElementById('validUntil');
+    if(vu) vu.textContent = `${windowEnd.getHours().toString().padStart(2,'0')}:${windowEnd.getMinutes().toString().padStart(2,'0')}:${windowEnd.getSeconds().toString().padStart(2,'0')}`;
+    const bar = document.getElementById('validityBar');
+    if(bar) bar.style.width = (remaining/windowSec*100)+'%';
+  };
+  update();
+  validityTimer = setInterval(update, 1000);
+}
+
+function closeQrModal() {
+  document.getElementById('qrDisplayModal').classList.remove('open');
+  if(validityTimer) clearInterval(validityTimer);
+}
+
+// ══════════════════════════════
+//  SCANNER
+// ══════════════════════════════
+async function startScan() {
+  const wrap = document.getElementById('viewfinderWrap');
+  const startBtn = document.getElementById('startScanBtn');
+  const stopBtn = document.getElementById('stopScanBtn');
+  const hint = document.getElementById('scannerHint');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    S.scanStream = stream;
+    S.scanActive = true;
+    document.getElementById('video-el').srcObject = stream;
+    wrap.classList.add('show');
+    startBtn.classList.add('hidden');
+    stopBtn.classList.remove('hidden');
+    hint.textContent = '📡 正在掃描... 請對準巡檢點 QR Code';
+    // Simulate auto detect after 3s for demo
+    setTimeout(()=>{ if(S.scanActive) simulateScan(); }, 4000);
+  } catch(e) {
+    hint.textContent = '❌ 無法開啟相機：'+e.message;
+    showToast('請允許相機權限後重試', 'warn');
+  }
+}
+
+function stopScan() {
+  if(S.scanStream) { S.scanStream.getTracks().forEach(t=>t.stop()); S.scanStream = null; }
+  S.scanActive = false;
+  document.getElementById('viewfinderWrap').classList.remove('show');
+  document.getElementById('startScanBtn').classList.remove('hidden');
+  document.getElementById('stopScanBtn').classList.add('hidden');
+  document.getElementById('scannerHint').textContent = '';
+}
+
+function simulateScan() {
+  stopScan();
+  // Pick a random pending task location
+  const pending = S.tasks.filter(t=>t.status!=='done');
+  const task = pending.length ? pending[0] : S.tasks[0];
+  const loc = S.locations.find(l=>l.name===task.location) || S.locations[0];
+  processScan(loc.id);
+}
+
+function processScan(locId) {
+  const loc = S.locations.find(l=>l.id===locId);
+  if(!loc) { showToast('❌ 無法識別 QR Code', 'err'); return; }
+  // Find matching task
+  const task = S.tasks.find(t=>t.location===loc.name && t.status!=='done');
+  if(!task) { showToast('✅ 此地點今日已完成巡檢', 'ok'); return; }
+  // Check duplicate scan
+  const now = Date.now();
+  const lastScanTime = S.lastScan[locId] || 0;
+  const dupeLockMs = (parseInt(document.getElementById('dupeLock')?.value||30)) * 60000;
+  if(now - lastScanTime < dupeLockMs && lastScanTime > 0) {
+    const minAgo = Math.floor((now-lastScanTime)/60000);
+    showToast(`⚠️ ${minAgo} 分鐘前已掃描此地點`, 'warn'); return;
+  }
+  S.selectedTask = task;
+  S.lastScan[locId] = now;
+  openChecklist(task.id);
+}
+
+// ══════════════════════════════
+//  CHECKLIST MODAL
+// ══════════════════════════════
+function openChecklist(taskId) {
+  const task = S.tasks.find(t=>t.id===taskId);
+  if(!task) return;
+  S.selectedTask = task;
+  const items = S.templates[task.template] || S.templates['設備日常巡檢'];
+  const now = new Date();
+  const timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  document.getElementById('checklistModalTitle').textContent = `📋 ${task.location}`;
+  document.getElementById('checklistModalBody').innerHTML = `
+    <div class="alert alert-success" style="margin-bottom:16px">
+      🔲 QR Code 驗證通過 &nbsp;|&nbsp; 掃描時間：<strong class="mono">${timeStr}</strong>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div>
+        <div style="font-size:13px;color:var(--text2)">巡檢範本</div>
+        <div style="font-size:14px;font-weight:700">${task.template}</div>
+      </div>
+      <span class="freq-tag">${task.freq}</span>
+    </div>
+    <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:8px;letter-spacing:.5px;text-transform:uppercase">✅ 巡檢項目確認</div>
+    ${items.map((item,i)=>`
+      <div class="check-item">
+        <input type="checkbox" id="ci_${i}">
+        <label for="ci_${i}">${item}</label>
+      </div>
+    `).join('')}
+    <div style="margin-top:14px">
+      <label class="form-label">巡檢備註</label>
+      <textarea class="form-control" id="checkinNote" placeholder="如有異常請描述，完成後點下方按鈕..." style="min-height:70px"></textarea>
+    </div>
+  `;
+  openModal('checklistModal');
+}
+
+function confirmCheckin() {
+  const task = S.selectedTask;
+  if(!task) return;
+  const items = S.templates[task.template] || [];
+  const checked = items.filter((_,i)=>document.getElementById('ci_'+i)?.checked).length;
+  if(checked < items.length) {
+    const ok = confirm(`尚有 ${items.length-checked} 項未勾選，確定要完成打卡嗎？`);
+    if(!ok) return;
+  }
+  const note = document.getElementById('checkinNote')?.value || '';
+  const now = new Date();
+  const timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  task.status = 'done';
+  task.checkedAt = timeStr;
+  S.records.unshift({
+    date: now.toLocaleDateString('zh-TW')+' '+timeStr,
+    staff: task.staff,
+    location: task.location,
+    method: 'QR掃描',
+    ts: timeStr+':'+now.getSeconds().toString().padStart(2,'0'),
+    dur: Math.floor(Math.random()*15+8)+'分鐘',
+    result: note ? '異常' : '正常',
+  });
+  closeModal('checklistModal');
+  renderTasks(); updateProgress(); renderRecords();
+  showScanSuccess();
+  if(note) showToast('⚠️ 已記錄異常，建議至異常登記頁補充詳情', 'warn');
+}
+
+function showScanSuccess() {
+  const el = document.getElementById('scanSuccess');
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 1800);
+}
+
+// ══════════════════════════════
+//  ANOMALY
+// ══════════════════════════════
+function selectAtype(el, val) {
+  document.querySelectorAll('.atype-option').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  el.querySelector('input').checked = true;
+  S.atype = val;
+}
+
+function setSeverity(level, el) {
+  S.severity = level;
+  document.querySelectorAll('.sev-option').forEach(e=>{ e.className='sev-option'; });
+  el.classList.add('active-'+level);
+}
+
+function submitAnomaly() {
+  const loc = document.getElementById('anomalyLocation').value;
+  const desc = document.getElementById('anomalyDesc').value;
+  if(!loc||!S.atype||!desc||!S.severity) { showToast('⚠️ 請填寫所有必填欄位（*）', 'warn'); return; }
+  const now = new Date();
+  S.anomalies.unshift({ id:Date.now(), time:`${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`, location:loc, type:S.atype, severity:S.severity, desc, status:'待處理' });
+  renderAnomalies();
+  document.getElementById('anomalyLocation').value='';
+  document.getElementById('anomalyDesc').value='';
+  document.querySelectorAll('.atype-option').forEach(e=>e.classList.remove('selected'));
+  document.querySelectorAll('.sev-option').forEach(e=>e.className='sev-option');
+  S.atype=null; S.severity=null;
+  showToast('⚠️ 異常報告已提交！', 'warn');
+}
+
+function viewAnomaly(id) {
+  const a = S.anomalies.find(x=>x.id===id);
+  if(!a) return;
+  const sevLabels = {low:'🟡 輕微',mid:'🟠 中度',high:'🔴 嚴重'};
+  document.getElementById('anomalyDetailBody').innerHTML = `
+    <div style="margin-bottom:14px">
+      <div style="font-size:18px;font-weight:900">${a.location}</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:3px">${a.time}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">類別</div><div style="font-weight:700">${a.type}</div></div>
+      <div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">嚴重程度</div><div style="font-weight:700">${sevLabels[a.severity]}</div></div>
+    </div>
+    <div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px">異常描述</div>
+      <div style="font-size:14px;line-height:1.6">${a.desc}</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">更新狀態</label>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="updateAnomalyStatus(${a.id},'處理中')">⚙️ 處理中</button>
+        <button class="btn btn-green btn-sm" onclick="updateAnomalyStatus(${a.id},'已結案')">✅ 結案</button>
+      </div>
+    </div>
+  `;
+  openModal('anomalyDetailModal');
+}
+
+function updateAnomalyStatus(id, status) {
+  const a = S.anomalies.find(x=>x.id===id);
+  if(a) { a.status=status; renderAnomalies(); closeModal('anomalyDetailModal'); showToast('✅ 狀態已更新'); }
+}
+
+// ══════════════════════════════
+//  SCHEDULE / LOCATION / ADMIN
+// ══════════════════════════════
+function addSchedule() {
+  S.schedules.push({ id:Date.now(), location:document.getElementById('sched_location').value, freq:document.getElementById('sched_freq').value, staff:document.getElementById('sched_staff').value, start:document.getElementById('sched_start').value, end:document.getElementById('sched_end').value, template:document.getElementById('sched_template').value, active:true });
+  renderSchedules(); closeModal('scheduleModal'); showToast('✅ 排程新增成功！');
+}
+
+function addLocation() {
+  const name = document.getElementById('loc_name').value.trim();
+  if(!name) { showToast('請輸入地點名稱','warn'); return; }
+  const id = 'LOC'+String(S.locations.length+1).padStart(3,'0');
+  S.locations.push({ id, name, building:document.getElementById('loc_building').value, floor:document.getElementById('loc_floor').value||'-', desc:document.getElementById('loc_desc').value });
+  renderLocations(); renderQRGrid(); closeModal('locationModal'); showToast('✅ 地點新增成功！QR Code 已自動產生');
+}
+
+function removeLocation(i) {
+  if(!confirm('確定刪除此巡檢地點？')) return;
+  S.locations.splice(i,1); renderLocations(); renderQRGrid();
+}
+
+// ══════════════════════════════
+//  UTILS
+// ══════════════════════════════
+function showTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  const tabs=['patrol','anomaly','schedule','records','qrcodes','admin'];
+  document.querySelectorAll('.nav-tab')[tabs.indexOf(tab)]?.classList.add('active');
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(el=>el.addEventListener('click',e=>{ if(e.target===el) el.classList.remove('open'); }));
+document.getElementById('qrDisplayModal').addEventListener('click',e=>{ if(e.target===document.getElementById('qrDisplayModal')) closeQrModal(); });
+
+function toggleRole() {
+  S.role = S.role==='manager'?'staff':'manager';
+  document.getElementById('roleLabel').textContent = S.role==='manager'?'課長模式':'廠務模式';
+}
+
+let toastTimer;
+function showToast(msg, type='ok') {
+  const t = document.getElementById('toast');
+  const colors = {ok:'var(--green)',warn:'var(--accent)',err:'var(--red)'};
+  t.style.borderColor = colors[type]||colors.ok;
+  t.style.color = colors[type]||colors.ok;
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+function previewPhotos(input) {
+  const pv = document.getElementById('photoPreview');
+  Array.from(input.files).slice(0,5).forEach(file=>{
+    const reader = new FileReader();
+    reader.onload = e=>{ const img=document.createElement('img'); img.src=e.target.result; img.className='photo-thumb'; pv.appendChild(img); };
+    reader.readAsDataURL(file);
+  });
+}
+
+function exportCSV() {
+  const rows=[['日期時間','人員','地點','驗證方式','時間戳','用時','結果']];
+  S.records.forEach(r=>rows.push([r.date,r.staff,r.location,r.method,r.ts,r.dur,r.result]));
+  const csv = rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='巡檢記錄_'+new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')+'.csv';
+  a.click();
+}
+
+// Init
+renderAll();
+</script>
+</body>
+</html>
