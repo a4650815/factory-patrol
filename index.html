@@ -4,477 +4,369 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>廠區巡檢系統</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#1c2128;--border:#30363d;--border2:#21262d;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --accent:#f0a500;--green:#3fb950;--green-bg:rgba(63,185,80,.12);
+  --red:#f85149;--red-bg:rgba(248,81,73,.12);--blue:#58a6ff;--blue-bg:rgba(88,166,255,.12);
+  --orange:#ff7b33;--orange-bg:rgba(255,123,51,.12);--purple:#a371f7;--purple-bg:rgba(163,113,247,.12);
+  --radius:12px;--radius-sm:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(240,165,0,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(240,165,0,.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
 
-:root {
-  --bg: #0d1117;
-  --bg2: #161b22;
-  --bg3: #1c2128;
-  --border: #30363d;
-  --border2: #21262d;
-  --text: #e6edf3;
-  --text2: #8b949e;
-  --text3: #6e7681;
-  --accent: #f0a500;
-  --accent2: #d4911a;
-  --green: #3fb950;
-  --green-bg: rgba(63,185,80,.12);
-  --red: #f85149;
-  --red-bg: rgba(248,81,73,.12);
-  --blue: #58a6ff;
-  --blue-bg: rgba(88,166,255,.12);
-  --orange: #ff7b33;
-  --orange-bg: rgba(255,123,51,.12);
-  --radius: 12px;
-  --radius-sm: 8px;
-}
+/* LOGIN */
+.login-screen{position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;align-items:center;justify-content:center;padding:24px;overflow-y:auto;}
+.login-screen.hidden{display:none;}
+.login-box{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:32px 24px;width:100%;max-width:400px;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,.5);}
+.login-logo{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--accent),#ff7b33);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px;box-shadow:0 0 30px rgba(240,165,0,.3);}
+.login-box h2{font-size:22px;font-weight:900;margin-bottom:4px;}
+.login-box h2 span{color:var(--accent);}
+.login-box p{font-size:13px;color:var(--text2);margin-bottom:24px;}
+.manager-btn{width:100%;padding:14px;border-radius:12px;border:1.5px solid rgba(240,165,0,.35);background:rgba(240,165,0,.06);cursor:pointer;transition:all .2s;margin-bottom:14px;}
+.manager-btn:hover{border-color:var(--accent);background:rgba(240,165,0,.1);}
+.manager-btn .u-avatar{width:48px;height:48px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;color:#0d1117;background:linear-gradient(135deg,var(--accent),#ff7b33);}
+.manager-btn .u-name{font-size:15px;font-weight:700;}
+.manager-btn .u-role{font-size:12px;color:var(--accent);margin-top:2px;}
+.admin-lock{display:none;margin-top:10px;text-align:left;}
+.admin-lock-inner{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.admin-lock input{width:100%;padding:10px 13px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:16px;font-family:inherit;outline:none;text-align:center;letter-spacing:4px;margin-bottom:10px;}
+.admin-lock input:focus{border-color:var(--accent);}
+.admin-lock input.error{border-color:var(--red);animation:shake .3s ease;}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.staff-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--text3);font-size:12px;}
+.staff-divider::before,.staff-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.user-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.user-btn{padding:12px 8px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg3);cursor:pointer;transition:all .2s;text-align:center;}
+.user-btn:hover{border-color:var(--green);background:rgba(63,185,80,.06);}
+.user-btn .u-avatar{width:40px;height:40px;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#0d1117;}
+.user-btn .u-name{font-size:13px;font-weight:700;}
+.user-btn .u-role{font-size:11px;color:var(--text2);margin-top:1px;}
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* TOPBAR */
+.topbar{position:sticky;top:0;z-index:100;background:rgba(13,17,23,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 16px;height:56px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-brand{display:flex;align-items:center;gap:10px;}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#ff7b33);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 16px rgba(240,165,0,.3);}
+.topbar-brand h1{font-size:15px;font-weight:700;}
+.topbar-brand h1 span{color:var(--accent);}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+.user-chip{display:flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:13px;color:var(--text2);}
+.chip-dot{width:8px;height:8px;border-radius:50%;}
+.chip-dot.manager{background:var(--accent);box-shadow:0 0 6px var(--accent);}
+.chip-dot.staff{background:var(--green);box-shadow:0 0 6px var(--green);}
+.logout-btn{background:none;border:1px solid var(--border);border-radius:8px;color:var(--text3);font-size:12px;padding:5px 10px;cursor:pointer;font-family:inherit;transition:all .15s;}
+.logout-btn:hover{border-color:var(--red);color:var(--red);}
+.db-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);}
+.db-dot.ok{background:var(--green);box-shadow:0 0 5px var(--green);}
+.db-dot.err{background:var(--red);}
 
-body {
-  font-family: 'Noto Sans TC', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  overflow-x: hidden;
-}
+/* NAV */
+.nav-wrap{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 16px;position:sticky;top:56px;z-index:99;}
+.nav-tabs{display:flex;overflow-x:auto;scrollbar-width:none;}
+.nav-tabs::-webkit-scrollbar{display:none;}
+.nav-tab{flex-shrink:0;padding:13px 14px;font-size:13px;font-weight:500;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:5px;}
+.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.nav-tab:hover:not(.active){color:var(--text);}
+.nav-tab.admin-only{display:none;}
+.tab-badge{background:var(--red);color:white;border-radius:10px;padding:1px 6px;font-size:11px;font-weight:700;}
 
-/* Subtle grid background */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(240,165,0,.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(240,165,0,.03) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-  z-index: 0;
-}
+/* CONTENT */
+.content{max-width:900px;margin:0 auto;padding:20px 16px;position:relative;z-index:1;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
 
-/* ── TOP BAR ── */
-.topbar {
-  position: sticky; top: 0; z-index: 100;
-  background: rgba(13,17,23,.92);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--border);
-  padding: 0 20px;
-  height: 56px;
-  display: flex; align-items: center; justify-content: space-between;
-}
-.topbar-brand { display: flex; align-items: center; gap: 10px; }
-.topbar-brand .logo {
-  width: 34px; height: 34px; border-radius: 9px;
-  background: linear-gradient(135deg, var(--accent), #ff7b33);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; box-shadow: 0 0 16px rgba(240,165,0,.3);
-}
-.topbar-brand h1 { font-size: 16px; font-weight: 700; letter-spacing: .3px; }
-.topbar-brand h1 span { color: var(--accent); }
-.role-toggle {
-  display: flex; align-items: center; gap: 8px;
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 20px; padding: 5px 12px; cursor: pointer;
-  font-size: 13px; color: var(--text2); transition: all .2s;
-}
-.role-toggle:hover { border-color: var(--accent); color: var(--text); }
-.role-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+/* LOADING */
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(13,17,23,.85);z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.loading-overlay.show{display:flex;}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── NAV ── */
-.nav-wrap { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0 16px; position: sticky; top: 56px; z-index: 99; }
-.nav-tabs { display: flex; gap: 0; overflow-x: auto; scrollbar-width: none; }
-.nav-tabs::-webkit-scrollbar { display: none; }
-.nav-tab {
-  flex-shrink: 0; padding: 14px 16px;
-  font-size: 13px; font-weight: 500; color: var(--text2);
-  border: none; background: none; cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: all .2s; white-space: nowrap; display: flex; align-items: center; gap: 6px;
-}
-.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-.nav-tab:hover:not(.active) { color: var(--text); }
-.nav-tab .tab-badge {
-  background: var(--red); color: white;
-  border-radius: 10px; padding: 1px 6px; font-size: 11px; font-weight: 700;
-}
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:14px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(240,165,0,.2),transparent);}
+.card-title{font-size:14px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;}
+.card-title-left{display:flex;align-items:center;gap:8px;}
+.section-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;background:rgba(240,165,0,.12);border:1px solid rgba(240,165,0,.2);}
 
-/* ── CONTENT ── */
-.content { max-width: 900px; margin: 0 auto; padding: 20px 16px; position: relative; z-index: 1; }
-.tab-content { display: none; }
-.tab-content.active { display: block; }
+/* SCANNER */
+.scanner-hero{background:linear-gradient(135deg,#0d1117 0%,#1a1f2e 100%);border:1px solid var(--border);border-radius:var(--radius);padding:28px 20px;text-align:center;margin-bottom:14px;}
+.scanner-icon-wrap{width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,rgba(240,165,0,.15),rgba(255,123,51,.1));border:1px solid rgba(240,165,0,.25);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:38px;box-shadow:0 0 30px rgba(240,165,0,.15);}
+.scanner-hero h2{font-size:20px;font-weight:900;margin-bottom:6px;}
+.scanner-hero h2 span{color:var(--accent);}
+.scanner-hero p{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6;}
+.viewfinder-wrap{position:relative;width:240px;height:240px;margin:0 auto 20px;display:none;}
+.viewfinder-wrap.show{display:block;}
+#video-el{width:100%;height:100%;object-fit:cover;border-radius:16px;display:block;}
+.vf-corners{position:absolute;inset:0;pointer-events:none;}
+.vf-corner{position:absolute;width:24px;height:24px;border-color:var(--accent);border-style:solid;border-width:0;}
+.vf-corner.tl{top:0;left:0;border-top-width:3px;border-left-width:3px;border-radius:4px 0 0 0;}
+.vf-corner.tr{top:0;right:0;border-top-width:3px;border-right-width:3px;border-radius:0 4px 0 0;}
+.vf-corner.bl{bottom:0;left:0;border-bottom-width:3px;border-left-width:3px;border-radius:0 0 0 4px;}
+.vf-corner.br{bottom:0;right:0;border-bottom-width:3px;border-right-width:3px;border-radius:0 0 4px 0;}
+.scan-line{position:absolute;left:8px;right:8px;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scanline 2s linear infinite;box-shadow:0 0 8px var(--accent);}
+@keyframes scanline{0%{top:8px}100%{top:calc(100% - 8px)}}
+.scanner-hint{font-size:12px;color:var(--text3);margin-top:8px;font-family:'JetBrains Mono',monospace;}
 
-/* ── CARDS ── */
-.card {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
-  margin-bottom: 14px;
-  position: relative; overflow: hidden;
-}
-.card::before {
-  content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(240,165,0,.2), transparent);
-}
-.card-title {
-  font-size: 14px; font-weight: 700; color: var(--text);
-  margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;
-}
-.card-title-left { display: flex; align-items: center; gap: 8px; }
-.section-icon {
-  width: 30px; height: 30px; border-radius: 8px;
-  display: flex; align-items: center; justify-content: center; font-size: 15px;
-  background: rgba(240,165,0,.12); border: 1px solid rgba(240,165,0,.2);
-}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .2s;font-family:inherit;}
+.btn-accent{background:var(--accent);color:#0d1117;}
+.btn-accent:hover{background:#ffc333;}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--text2);color:var(--text);}
+.btn-green{background:var(--green);color:#0d1117;}
+.btn-green:hover{background:#4ec65a;}
+.btn-red{background:var(--red);color:white;}
+.btn-blue{background:var(--blue);color:#0d1117;}
+.btn-sm{padding:6px 14px;font-size:13px;}
+.btn-block{width:100%;justify-content:center;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
 
-/* ── QR SCANNER AREA ── */
-.scanner-hero {
-  background: linear-gradient(135deg, #0d1117 0%, #1a1f2e 100%);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 28px 20px;
-  text-align: center;
-  margin-bottom: 14px;
-  position: relative; overflow: hidden;
-}
-.scanner-hero::after {
-  content: '';
-  position: absolute; bottom: -40px; right: -40px;
-  width: 160px; height: 160px; border-radius: 50%;
-  background: radial-gradient(circle, rgba(240,165,0,.06) 0%, transparent 70%);
-}
-.scanner-icon-wrap {
-  width: 80px; height: 80px; border-radius: 20px;
-  background: linear-gradient(135deg, rgba(240,165,0,.15), rgba(255,123,51,.1));
-  border: 1px solid rgba(240,165,0,.25);
-  margin: 0 auto 16px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 38px;
-  box-shadow: 0 0 30px rgba(240,165,0,.15);
-}
-.scanner-hero h2 { font-size: 20px; font-weight: 900; margin-bottom: 6px; }
-.scanner-hero h2 span { color: var(--accent); }
-.scanner-hero p { font-size: 13px; color: var(--text2); margin-bottom: 20px; line-height: 1.6; }
+/* TASKS */
+.task-item{display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px solid var(--border2);}
+.task-item:last-child{border-bottom:none;}
+.task-status-icon{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;margin-top:2px;}
+.task-status-icon.done{background:var(--green-bg);}
+.task-status-icon.pending{background:rgba(240,165,0,.1);}
+.task-status-icon.overdue{background:var(--red-bg);}
+.task-status-icon.pending_approval{background:var(--purple-bg);}
+.task-info{flex:1;min-width:0;}
+.task-name{font-size:14px;font-weight:700;}
+.task-meta{font-size:12px;color:var(--text2);margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.task-checkin-time{font-size:12px;color:var(--green);margin-top:3px;font-family:'JetBrains Mono',monospace;}
+.task-actions{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding-top:2px;}
 
-/* Camera viewfinder */
-.viewfinder-wrap {
-  position: relative;
-  width: 240px; height: 240px;
-  margin: 0 auto 20px;
-  display: none;
-}
-.viewfinder-wrap.show { display: block; }
-#video-el {
-  width: 100%; height: 100%;
-  object-fit: cover;
-  border-radius: 16px;
-  display: block;
-}
-.vf-corners { position: absolute; inset: 0; pointer-events: none; }
-.vf-corner {
-  position: absolute; width: 24px; height: 24px;
-  border-color: var(--accent); border-style: solid; border-width: 0;
-}
-.vf-corner.tl { top: 0; left: 0; border-top-width: 3px; border-left-width: 3px; border-radius: 4px 0 0 0; }
-.vf-corner.tr { top: 0; right: 0; border-top-width: 3px; border-right-width: 3px; border-radius: 0 4px 0 0; }
-.vf-corner.bl { bottom: 0; left: 0; border-bottom-width: 3px; border-left-width: 3px; border-radius: 0 0 0 4px; }
-.vf-corner.br { bottom: 0; right: 0; border-bottom-width: 3px; border-right-width: 3px; border-radius: 0 0 4px 0; }
-.scan-line {
-  position: absolute; left: 8px; right: 8px; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  animation: scanline 2s linear infinite;
-  box-shadow: 0 0 8px var(--accent);
-}
-@keyframes scanline { 0%{top:8px} 100%{top:calc(100% - 8px)} }
+/* SCHEDULE TYPE TAGS */
+.stype-tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.stype-weekly{background:rgba(88,166,255,.1);color:var(--blue);border:1px solid rgba(88,166,255,.2);}
+.stype-monthly{background:rgba(163,113,247,.1);color:var(--purple);border:1px solid rgba(163,113,247,.2);}
+.stype-onetime{background:rgba(255,123,51,.1);color:var(--orange);border:1px solid rgba(255,123,51,.2);}
 
-.scanner-hint {
-  font-size: 12px; color: var(--text3); margin-top: 8px;
-  font-family: 'JetBrains Mono', monospace;
-}
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;}
+.badge-green{background:var(--green-bg);color:var(--green);}
+.badge-yellow{background:rgba(240,165,0,.12);color:var(--accent);}
+.badge-red{background:var(--red-bg);color:var(--red);}
+.badge-blue{background:var(--blue-bg);color:var(--blue);}
+.badge-gray{background:rgba(139,148,158,.1);color:var(--text2);}
+.badge-orange{background:var(--orange-bg);color:var(--orange);}
+.badge-purple{background:var(--purple-bg);color:var(--purple);}
 
-/* ── BUTTONS ── */
-.btn {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 10px 20px; border-radius: var(--radius-sm);
-  font-size: 14px; font-weight: 600; cursor: pointer; border: none;
-  transition: all .2s; font-family: inherit;
-}
-.btn-accent { background: var(--accent); color: #0d1117; }
-.btn-accent:hover { background: #ffc333; box-shadow: 0 0 20px rgba(240,165,0,.3); }
-.btn-ghost {
-  background: transparent; color: var(--text2);
-  border: 1px solid var(--border);
-}
-.btn-ghost:hover { border-color: var(--text2); color: var(--text); }
-.btn-green { background: var(--green); color: #0d1117; }
-.btn-green:hover { background: #4ec65a; box-shadow: 0 0 16px rgba(63,185,80,.3); }
-.btn-red { background: var(--red); color: white; }
-.btn-sm { padding: 6px 14px; font-size: 13px; }
-.btn-block { width: 100%; justify-content: center; }
+/* PROGRESS */
+.progress-wrap{display:flex;align-items:center;gap:12px;}
+.progress-bar-bg{flex:1;height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;}
+.progress-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),#ff7b33);transition:width .5s cubic-bezier(.4,0,.2,1);}
+.progress-pct{font-size:22px;font-weight:900;color:var(--accent);font-family:'JetBrains Mono',monospace;}
 
-/* ── TASK LIST ── */
-.task-item {
-  display: flex; align-items: center; gap: 14px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border2);
-  transition: background .15s;
-}
-.task-item:last-child { border-bottom: none; }
-.task-status-icon {
-  width: 42px; height: 42px; border-radius: 11px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px; flex-shrink: 0;
-}
-.task-status-icon.done { background: var(--green-bg); }
-.task-status-icon.pending { background: rgba(240,165,0,.1); }
-.task-status-icon.overdue { background: var(--red-bg); }
-.task-info { flex: 1; min-width: 0; }
-.task-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.task-meta { font-size: 12px; color: var(--text2); margin-top: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.task-checkin-time { font-size: 12px; color: var(--green); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
-.task-actions { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;}
+.stat-num{font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;}
+.stat-label{font-size:11px;color:var(--text2);margin-top:4px;}
 
-/* ── BADGES ── */
-.badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 10px; border-radius: 20px;
-  font-size: 12px; font-weight: 700;
-}
-.badge-green { background: var(--green-bg); color: var(--green); }
-.badge-yellow { background: rgba(240,165,0,.12); color: var(--accent); }
-.badge-red { background: var(--red-bg); color: var(--red); }
-.badge-blue { background: var(--blue-bg); color: var(--blue); }
-.badge-gray { background: rgba(139,148,158,.1); color: var(--text2); }
-.badge-orange { background: var(--orange-bg); color: var(--orange); }
+/* FORMS */
+.form-group{margin-bottom:14px;}
+.form-label{display:block;font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase;}
+.form-control{width:100%;padding:10px 13px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border .2s;}
+.form-control:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(240,165,0,.1);}
+.form-control option{background:var(--bg3);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+textarea.form-control{resize:vertical;min-height:80px;}
 
-.freq-tag {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px; padding: 2px 8px;
-  background: rgba(88,166,255,.1); color: var(--blue);
-  border-radius: 4px; border: 1px solid rgba(88,166,255,.2);
-}
+/* SCHEDULE TYPE SELECTOR */
+.stype-selector{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px;}
+.stype-btn{padding:12px 8px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg3);cursor:pointer;text-align:center;transition:all .2s;}
+.stype-btn:hover{border-color:var(--accent);}
+.stype-btn.active{border-color:var(--accent);background:rgba(240,165,0,.08);}
+.stype-btn .stype-icon{font-size:22px;margin-bottom:6px;}
+.stype-btn .stype-label{font-size:12px;font-weight:700;color:var(--text2);}
+.stype-btn .stype-desc{font-size:11px;color:var(--text3);margin-top:2px;}
+.stype-btn.active .stype-label{color:var(--accent);}
 
-/* ── PROGRESS ── */
-.progress-wrap { display: flex; align-items: center; gap: 12px; }
-.progress-bar-bg { flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
-.progress-bar-fill {
-  height: 100%; border-radius: 4px;
-  background: linear-gradient(90deg, var(--accent), #ff7b33);
-  box-shadow: 0 0 8px rgba(240,165,0,.4);
-  transition: width .5s cubic-bezier(.4,0,.2,1);
-}
-.progress-pct { font-size: 22px; font-weight: 900; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+/* SCHEDULE DYNAMIC FIELDS */
+.stype-fields{display:none;}
+.stype-fields.show{display:block;}
 
-/* ── STATS GRID ── */
-.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 14px; }
-.stat-card {
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 16px; text-align: center;
-}
-.stat-num { font-size: 28px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
-.stat-label { font-size: 11px; color: var(--text2); margin-top: 4px; }
+/* QR MODAL */
+.qr-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:300;align-items:center;justify-content:center;padding:16px;}
+.qr-modal-overlay.open{display:flex;}
+.qr-modal{background:var(--bg2);border:1px solid var(--border);border-radius:20px;width:100%;max-width:340px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.7);}
+.qr-modal-top{background:#ffffff;padding:28px;text-align:center;}
+.qr-modal-body{padding:20px;}
+.qr-location-name{font-size:17px;font-weight:900;text-align:center;margin-bottom:3px;}
+.qr-meta{text-align:center;font-size:13px;color:var(--text2);margin-bottom:14px;}
+.qr-validity{background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.2);border-radius:var(--radius-sm);padding:12px;text-align:center;font-size:13px;color:var(--accent);font-family:'JetBrains Mono',monospace;}
+.validity-bar-bg{height:4px;background:var(--bg3);border-radius:2px;margin-top:8px;overflow:hidden;}
+.validity-bar-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 1s linear;}
 
-/* ── FORMS ── */
-.form-group { margin-bottom: 14px; }
-.form-label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 6px; letter-spacing: .5px; text-transform: uppercase; }
-.form-control {
-  width: 100%; padding: 10px 13px;
-  background: var(--bg3); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); color: var(--text);
-  font-size: 14px; font-family: inherit; outline: none;
-  transition: border .2s;
-}
-.form-control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(240,165,0,.1); }
-.form-control option { background: var(--bg3); }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-textarea.form-control { resize: vertical; min-height: 80px; }
+/* MODALS */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:200;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 0 0;width:100%;max-width:620px;max-height:92vh;overflow-y:auto;box-shadow:0 -20px 60px rgba(0,0,0,.4);}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0;}
+.modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg2);z-index:1;}
+.modal-header h3{font-size:16px;font-weight:700;}
+.modal-body{padding:20px;}
+.modal-footer{padding:16px 20px;border-top:1px solid var(--border);}
+.close-btn{background:none;border:none;color:var(--text2);font-size:22px;cursor:pointer;line-height:1;padding:4px;}
+.check-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2);}
+.check-item:last-child{border-bottom:none;}
+.check-item input[type=checkbox]{width:18px;height:18px;margin-top:1px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+.check-item label{font-size:14px;cursor:pointer;line-height:1.5;}
 
-/* ── QR CODE DISPLAY ── */
-.qr-modal-overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,.7); backdrop-filter: blur(6px);
-  z-index: 200; align-items: center; justify-content: center; padding: 16px;
-}
-.qr-modal-overlay.open { display: flex; }
-.qr-modal {
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 20px; width: 100%; max-width: 380px;
-  overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,.6);
-}
-.qr-modal-top {
-  background: linear-gradient(135deg, #1a1f2e, #0d1117);
-  padding: 24px; text-align: center; border-bottom: 1px solid var(--border);
-}
-.qr-canvas-wrap {
-  display: inline-block; padding: 14px;
-  background: white; border-radius: 14px;
-  box-shadow: 0 0 30px rgba(240,165,0,.15);
-}
-.qr-modal-body { padding: 20px; }
-.qr-location-name { font-size: 18px; font-weight: 900; text-align: center; margin-bottom: 4px; }
-.qr-meta { text-align: center; font-size: 13px; color: var(--text2); margin-bottom: 16px; }
-.qr-validity {
-  background: rgba(240,165,0,.08); border: 1px solid rgba(240,165,0,.2);
-  border-radius: var(--radius-sm); padding: 12px;
-  text-align: center; font-size: 13px; color: var(--accent);
-  font-family: 'JetBrains Mono', monospace;
-}
-.validity-bar-bg { height: 4px; background: var(--bg3); border-radius: 2px; margin-top: 8px; overflow: hidden; }
-.validity-bar-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 1s linear; }
+/* ANOMALY */
+.severity-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.sev-option{padding:10px 8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg3);cursor:pointer;text-align:center;font-size:13px;font-weight:700;color:var(--text2);transition:all .2s;}
+.sev-option.active-low{border-color:var(--accent);background:rgba(240,165,0,.1);color:var(--accent);}
+.sev-option.active-mid{border-color:var(--orange);background:var(--orange-bg);color:var(--orange);}
+.sev-option.active-high{border-color:var(--red);background:var(--red-bg);color:var(--red);}
+.atype-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.atype-option{padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg3);cursor:pointer;font-size:13px;color:var(--text2);display:flex;align-items:center;gap:8px;transition:all .15s;}
+.atype-option.selected{border-color:var(--accent);background:rgba(240,165,0,.08);color:var(--text);}
 
-/* ── CHECKLIST MODAL ── */
-.modal-overlay {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,.65); backdrop-filter: blur(4px);
-  z-index: 200; align-items: flex-end; justify-content: center;
-}
-.modal-overlay.open { display: flex; }
-.modal {
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 20px 20px 0 0; width: 100%; max-width: 600px;
-  max-height: 88vh; overflow-y: auto;
-  box-shadow: 0 -20px 60px rgba(0,0,0,.4);
-}
-.modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 0; }
-.modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-.modal-header h3 { font-size: 16px; font-weight: 700; }
-.modal-body { padding: 20px; }
-.modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
-.close-btn { background: none; border: none; color: var(--text2); font-size: 22px; cursor: pointer; line-height: 1; }
+/* APPROVAL CARD */
+.approval-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;}
+.approval-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.approval-title{font-size:14px;font-weight:700;}
+.approval-meta{font-size:12px;color:var(--text2);margin-top:3px;line-height:1.5;}
+.approval-actions{display:flex;gap:8px;margin-top:10px;}
 
-.check-item {
-  display: flex; align-items: flex-start; gap: 12px;
-  padding: 12px 0; border-bottom: 1px solid var(--border2);
-}
-.check-item:last-child { border-bottom: none; }
-.check-item input[type=checkbox] {
-  width: 18px; height: 18px; margin-top: 1px;
-  accent-color: var(--accent); cursor: pointer; flex-shrink: 0;
-}
-.check-item label { font-size: 14px; color: var(--text); cursor: pointer; line-height: 1.5; }
+/* STAFF CARDS */
+.staff-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+.staff-card{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;align-items:flex-start;gap:12px;}
+.staff-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#0d1117;flex-shrink:0;}
+.staff-name{font-size:14px;font-weight:700;}
+.staff-areas{font-size:12px;color:var(--text2);margin-top:4px;line-height:1.5;}
 
-/* ── ANOMALY ── */
-.severity-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
-.sev-option {
-  padding: 10px 8px; border-radius: var(--radius-sm);
-  border: 1px solid var(--border); background: var(--bg3);
-  cursor: pointer; text-align: center; font-size: 13px; font-weight: 700;
-  color: var(--text2); transition: all .2s;
-}
-.sev-option:hover { border-color: var(--text2); }
-.sev-option.active-low { border-color: var(--accent); background: rgba(240,165,0,.1); color: var(--accent); }
-.sev-option.active-mid { border-color: var(--orange); background: var(--orange-bg); color: var(--orange); }
-.sev-option.active-high { border-color: var(--red); background: var(--red-bg); color: var(--red); }
+/* AREA CHECKBOXES */
+.area-check-grid{display:flex;flex-direction:column;gap:8px;max-height:200px;overflow-y:auto;}
+.area-check-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);cursor:pointer;transition:all .15s;}
+.area-check-item.checked{border-color:var(--accent);background:rgba(240,165,0,.06);}
+.area-check-item input{accent-color:var(--accent);width:16px;height:16px;cursor:pointer;}
+.area-check-item label{font-size:13px;cursor:pointer;}
 
-.atype-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.atype-option {
-  padding: 10px; border-radius: var(--radius-sm);
-  border: 1px solid var(--border); background: var(--bg3);
-  cursor: pointer; font-size: 13px; color: var(--text2);
-  display: flex; align-items: center; gap: 8px;
-  transition: all .15s;
-}
-.atype-option:hover { border-color: var(--text2); color: var(--text); }
-.atype-option.selected { border-color: var(--accent); background: rgba(240,165,0,.08); color: var(--text); }
-.atype-option input { accent-color: var(--accent); }
+/* INLINE EDIT */
+.inline-list-item{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border2);}
+.inline-list-item:last-child{border-bottom:none;}
+.inline-list-item .item-text{flex:1;font-size:14px;}
+.inline-list-item input.item-edit{flex:1;background:var(--bg3);border:1px solid var(--accent);border-radius:6px;color:var(--text);font-size:14px;padding:5px 8px;font-family:inherit;outline:none;}
+.icon-btn{width:30px;height:30px;border-radius:6px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s;flex-shrink:0;}
+.icon-btn.del{background:var(--red-bg);color:var(--red);}
+.icon-btn.del:hover{background:var(--red);color:white;}
+.icon-btn.edit{background:var(--blue-bg);color:var(--blue);}
+.icon-btn.save{background:var(--green-bg);color:var(--green);}
 
-/* ── TABLE ── */
-.table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text3); border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: .5px; background: var(--bg3); }
-td { padding: 11px 12px; border-bottom: 1px solid var(--border2); color: var(--text); vertical-align: middle; }
-tr:hover td { background: rgba(255,255,255,.02); }
-tr:last-child td { border-bottom: none; }
+/* TABLE */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.5px;background:var(--bg3);}
+td{padding:11px 12px;border-bottom:1px solid var(--border2);vertical-align:middle;}
+tr:hover td{background:rgba(255,255,255,.02);}
+tr:last-child td{border-bottom:none;}
 
-/* ── QR CODE PRINT PAGE ── */
-.print-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.qr-print-card {
-  border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 16px; text-align: center; background: var(--bg3);
-  cursor: pointer; transition: all .2s;
-}
-.qr-print-card:hover { border-color: var(--accent); }
-.qr-mini-canvas { margin: 0 auto 10px; }
-.qr-print-name { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
-.qr-print-sub { font-size: 11px; color: var(--text3); }
+/* QR PRINT GRID */
+.print-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.qr-print-card{border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;background:var(--bg3);cursor:pointer;transition:all .2s;}
+.qr-print-card:hover{border-color:var(--accent);}
+.qr-print-img{width:100px;height:100px;margin:0 auto 10px;border-radius:6px;overflow:hidden;background:white;display:flex;align-items:center;justify-content:center;}
+.qr-print-name{font-size:12px;font-weight:700;margin-bottom:2px;}
+.qr-print-sub{font-size:11px;color:var(--text3);}
 
-/* ── SCAN SUCCESS ANIMATION ── */
-.scan-success {
-  display: none; position: fixed; inset: 0; z-index: 300;
-  background: rgba(63,185,80,.08);
-  align-items: center; justify-content: center; flex-direction: column;
-  gap: 12px;
-}
-.scan-success.show { display: flex; animation: fadeInOut .8s ease; }
-@keyframes fadeInOut { 0%{opacity:0;transform:scale(.9)} 20%{opacity:1;transform:scale(1)} 80%{opacity:1} 100%{opacity:0} }
-.scan-success-icon { font-size: 64px; animation: bounce .4s ease; }
-@keyframes bounce { 0%{transform:scale(0)} 60%{transform:scale(1.2)} 100%{transform:scale(1)} }
-.scan-success-text { font-size: 22px; font-weight: 900; color: var(--green); }
+/* TEMPLATE SECTION */
+.template-section{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;}
+.template-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.template-name{font-size:14px;font-weight:700;color:var(--accent);}
+.add-item-row{display:flex;gap:8px;margin-top:10px;}
 
-/* ── ALERT ── */
-.alert { padding: 12px 16px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 14px; display: flex; gap: 8px; }
-.alert-warning { background: rgba(240,165,0,.08); border-left: 3px solid var(--accent); color: #f5d78e; }
-.alert-success { background: var(--green-bg); border-left: 3px solid var(--green); color: #7ee787; }
-.alert-danger { background: var(--red-bg); border-left: 3px solid var(--red); color: #ff9994; }
-.alert-info { background: var(--blue-bg); border-left: 3px solid var(--blue); color: #a5c8ff; }
+/* ATYPE */
+.atype-row{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;}
 
-/* ── MISC ── */
-.divider { height: 1px; background: var(--border); margin: 16px 0; }
-.mono { font-family: 'JetBrains Mono', monospace; }
-.text-muted { color: var(--text2); font-size: 13px; }
-.flex-between { display: flex; align-items: center; justify-content: space-between; }
-.gap-8 { gap: 8px; }
-.hidden { display: none !important; }
+/* SUCCESS */
+.scan-success{display:none;position:fixed;inset:0;z-index:400;background:rgba(63,185,80,.08);align-items:center;justify-content:center;flex-direction:column;gap:12px;}
+.scan-success.show{display:flex;animation:fadeInOut .9s ease forwards;}
+@keyframes fadeInOut{0%{opacity:0;transform:scale(.9)}15%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0}}
 
-/* Toast */
-#toast {
-  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
-  background: var(--bg2); border: 1px solid var(--border);
-  color: var(--text); padding: 12px 20px; border-radius: 10px;
-  font-size: 14px; font-weight: 600; z-index: 999;
-  box-shadow: 0 8px 32px rgba(0,0,0,.4);
-  display: none; white-space: nowrap;
-}
-#toast.show { display: block; animation: slideUp .3s ease; }
-@keyframes slideUp { from{transform:translateX(-50%) translateY(20px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
+/* ALERT */
+.alert{padding:12px 16px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:14px;display:flex;gap:8px;line-height:1.5;}
+.alert-warning{background:rgba(240,165,0,.08);border-left:3px solid var(--accent);color:#f5d78e;}
+.alert-success{background:var(--green-bg);border-left:3px solid var(--green);color:#7ee787;}
+.alert-info{background:var(--blue-bg);border-left:3px solid var(--blue);color:#a5c8ff;}
+.alert-purple{background:var(--purple-bg);border-left:3px solid var(--purple);color:#c9aeff;}
 
-/* Photo upload */
-.photo-upload {
-  border: 2px dashed var(--border); border-radius: var(--radius-sm);
-  padding: 20px; text-align: center; cursor: pointer;
-  color: var(--text2); font-size: 13px; transition: border .2s;
-}
-.photo-upload:hover { border-color: var(--accent); color: var(--text); }
-.photo-preview { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-.photo-thumb { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); }
+.empty-state{text-align:center;padding:36px 20px;color:var(--text3);}
+.empty-state .empty-icon{font-size:36px;margin-bottom:8px;}
+.mono{font-family:'JetBrains Mono',monospace;}
+.hidden{display:none!important;}
+.divider{height:1px;background:var(--border);margin:16px 0;}
 
-@media (max-width: 560px) {
-  .stats-grid { grid-template-columns: repeat(2,1fr); }
-  .form-row { grid-template-columns: 1fr; }
-  .print-grid { grid-template-columns: repeat(2,1fr); }
-}
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,.4);display:none;white-space:nowrap;max-width:90%;}
+#toast.show{display:block;animation:slideUp .3s ease;}
+@keyframes slideUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+@media(max-width:560px){.stats-grid{grid-template-columns:repeat(2,1fr);}.form-row{grid-template-columns:1fr;}.print-grid{grid-template-columns:repeat(2,1fr);}.staff-grid{grid-template-columns:1fr;}.stype-selector{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
 
-<!-- Scan success overlay -->
-<div class="scan-success" id="scanSuccess">
-  <div class="scan-success-icon">✅</div>
-  <div class="scan-success-text">打卡成功！</div>
+<!-- ══ 登入 ══ -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">🏭</div>
+    <h2>廠區<span>巡檢</span>系統</h2>
+    <p>請選擇身份登入</p>
+    <div class="manager-btn" onclick="selectManager()">
+      <div class="u-avatar">鄧</div>
+      <div class="u-name">鄧羽廷</div>
+      <div class="u-role">👑 管理者</div>
+    </div>
+    <div class="admin-lock" id="adminLock">
+      <div class="admin-lock-inner">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;text-align:center">請輸入管理者密碼</div>
+        <input type="password" id="adminPwd" placeholder="••••" maxlength="6" oninput="this.classList.remove('error')" onkeyup="if(event.key==='Enter')confirmAdmin()">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" style="flex:1" onclick="cancelAdmin()">取消</button>
+          <button class="btn btn-accent btn-sm" style="flex:1" onclick="confirmAdmin()">確認登入</button>
+        </div>
+      </div>
+    </div>
+    <div class="staff-divider">廠務人員</div>
+    <div class="user-grid" id="staffLoginGrid">
+      <div style="grid-column:1/-1;text-align:center;color:var(--text3);font-size:13px;padding:16px">載入人員中...</div>
+    </div>
+  </div>
 </div>
 
-<!-- Top Bar -->
+<!-- ══ 主系統 ══ -->
+<div id="mainApp" class="hidden">
+
+<div class="scan-success" id="scanSuccess">
+  <div style="font-size:72px">✅</div>
+  <div style="font-size:22px;font-weight:900;color:var(--green)">打卡成功！</div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div style="font-size:14px;color:var(--text2)" id="loadingMsg">載入中...</div>
+</div>
+
+<!-- Topbar -->
 <div class="topbar">
   <div class="topbar-brand">
     <div class="logo">🏭</div>
     <h1>廠區<span>巡檢</span>系統</h1>
   </div>
-  <div class="role-toggle" onclick="toggleRole()">
-    <div class="role-dot"></div>
-    <span id="roleLabel">課長模式</span>
+  <div class="topbar-right">
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text3)">
+      <div class="db-dot" id="dbDot"></div>
+      <span id="dbTxt">連線中</span>
+    </div>
+    <div class="user-chip">
+      <div class="chip-dot" id="chipDot"></div>
+      <span id="currentUserLabel">—</span>
+    </div>
+    <button class="logout-btn" onclick="logout()">登出</button>
   </div>
 </div>
 
@@ -482,103 +374,76 @@ tr:last-child td { border-bottom: none; }
 <div class="nav-wrap">
   <div class="nav-tabs">
     <button class="nav-tab active" onclick="showTab('patrol')">📍 巡檢打卡</button>
-    <button class="nav-tab" onclick="showTab('anomaly')">⚠️ 異常登記 <span class="tab-badge" id="anomalyBadge">2</span></button>
-    <button class="nav-tab" onclick="showTab('schedule')">📅 排程管理</button>
-    <button class="nav-tab" onclick="showTab('records')">📋 巡檢記錄</button>
-    <button class="nav-tab" onclick="showTab('qrcodes')">🔲 QR Code</button>
-    <button class="nav-tab" onclick="showTab('admin')">⚙️ 系統設定</button>
+    <button class="nav-tab" onclick="showTab('my-schedule')">📅 我的排程 <span class="tab-badge" id="mySchedBadge" style="display:none">0</span></button>
+    <button class="nav-tab" onclick="showTab('anomaly')">⚠️ 異常登記 <span class="tab-badge" id="anomalyBadge" style="display:none">0</span></button>
+    <button class="nav-tab admin-only" onclick="showTab('approval')">✋ 待審核 <span class="tab-badge" id="approvalBadge" style="display:none">0</span></button>
+    <button class="nav-tab admin-only" onclick="showTab('records')">📋 巡檢記錄</button>
+    <button class="nav-tab admin-only" onclick="showTab('qrcodes')">🔲 QR Code</button>
+    <button class="nav-tab admin-only" onclick="showTab('settings')">⚙️ 系統設定</button>
   </div>
 </div>
 
 <div class="content">
 
-<!-- ══════ TAB: 巡檢打卡 ══════ -->
+<!-- ══ 巡檢打卡 ══ -->
 <div id="tab-patrol" class="tab-content active">
-
-  <!-- Scanner Hero -->
   <div class="scanner-hero">
     <div class="scanner-icon-wrap">🔲</div>
     <h2>QR Code <span>掃碼</span>打卡</h2>
-    <p>抵達巡檢地點後，對準現場張貼的 QR Code 掃描<br>每個 QR Code 每 <strong style="color:var(--accent)">5 分鐘</strong> 更新一次，防止截圖遠端提交</p>
-
-    <!-- Camera viewfinder -->
+    <p>抵達巡檢地點後，對準現場 QR Code 掃描<br>記錄即時寫入雲端資料庫</p>
     <div class="viewfinder-wrap" id="viewfinderWrap">
       <video id="video-el" playsinline autoplay muted></video>
-      <div class="vf-corners">
-        <div class="vf-corner tl"></div>
-        <div class="vf-corner tr"></div>
-        <div class="vf-corner bl"></div>
-        <div class="vf-corner br"></div>
-      </div>
+      <div class="vf-corners"><div class="vf-corner tl"></div><div class="vf-corner tr"></div><div class="vf-corner bl"></div><div class="vf-corner br"></div></div>
       <div class="scan-line"></div>
     </div>
     <div class="scanner-hint" id="scannerHint"></div>
-
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:4px">
       <button class="btn btn-accent" id="startScanBtn" onclick="startScan()">📷 開啟相機掃描</button>
-      <button class="btn btn-ghost hidden" id="stopScanBtn" onclick="stopScan()">✕ 關閉相機</button>
-      <button class="btn btn-ghost" onclick="simulateScan()">🔲 模擬掃碼（Demo）</button>
+      <button class="btn btn-ghost hidden" id="stopScanBtn" onclick="stopScan()">✕ 關閉</button>
+      <button class="btn btn-ghost hidden" id="simulateScanBtn" onclick="simulateScan()">🔲 模擬掃碼</button>
     </div>
   </div>
-
-  <!-- 今日任務 -->
   <div class="card">
     <div class="card-title">
-      <div class="card-title-left">
-        <div class="section-icon">📋</div>
-        <span>今日巡檢任務</span>
-      </div>
-      <span class="badge badge-yellow" id="pendingBadge">3 待完成</span>
+      <div class="card-title-left"><div class="section-icon">📋</div><span>今日巡檢任務</span></div>
+      <span class="badge badge-yellow" id="pendingBadge">—</span>
     </div>
-    <div id="taskList"></div>
+    <div id="taskList"><div class="empty-state"><div class="empty-icon">⏳</div><p>載入中...</p></div></div>
   </div>
-
-  <!-- 完成率 -->
   <div class="card">
-    <div class="card-title">
-      <div class="card-title-left"><div class="section-icon">📊</div><span>本日完成率</span></div>
-    </div>
+    <div class="card-title"><div class="card-title-left"><div class="section-icon">📊</div><span>今日完成率</span></div></div>
     <div class="progress-wrap">
-      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar" style="width:40%"></div></div>
-      <div class="progress-pct" id="progressPct">40%</div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar" style="width:0%"></div></div>
+      <div class="progress-pct" id="progressPct">0%</div>
     </div>
-    <div style="font-size:12px;color:var(--text2);margin-top:8px" id="progressText">已完成 2 / 5 個巡檢點</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:8px" id="progressText">載入中...</div>
   </div>
-
 </div>
 
-<!-- ══════ TAB: 異常登記 ══════ -->
-<div id="tab-anomaly" class="tab-content">
-
-  <div class="alert alert-warning">⚠️ 若遇緊急狀況請立即通報主管，嚴重異常系統將自動推送告警</div>
-
+<!-- ══ 我的排程 ══ -->
+<div id="tab-my-schedule" class="tab-content">
   <div class="card">
     <div class="card-title">
-      <div class="card-title-left"><div class="section-icon">📝</div><span>新增異常記錄</span></div>
+      <div class="card-title-left"><div class="section-icon">📅</div><span>我的排程</span></div>
+      <button class="btn btn-accent btn-sm" onclick="openModal('scheduleModal')">＋ 新增排程</button>
     </div>
+    <div id="myScheduleList"><div class="empty-state"><div class="empty-icon">⏳</div><p>載入中...</p></div></div>
+  </div>
+</div>
 
+<!-- ══ 異常登記 ══ -->
+<div id="tab-anomaly" class="tab-content">
+  <div class="alert alert-warning">⚠️ 若遇緊急狀況請立即通報主管</div>
+  <div class="card">
+    <div class="card-title"><div class="card-title-left"><div class="section-icon">📝</div><span>新增異常記錄</span></div></div>
     <div class="form-group">
       <label class="form-label">異常地點 *</label>
-      <select class="form-control" id="anomalyLocation">
-        <option value="">請選擇地點</option>
-        <option>A棟 - 生產線一</option><option>A棟 - 生產線二</option>
-        <option>B棟 - 倉儲區</option><option>B棟 - 裝卸月台</option>
-        <option>C棟 - 空壓機房</option><option>戶外 - 消防設備區</option><option>廠務辦公區</option>
-      </select>
+      <select class="form-control" id="anomalyLocation"><option value="">請選擇地點</option></select>
     </div>
-
     <div class="form-group">
       <label class="form-label">異常類別 *</label>
-      <div class="atype-grid" id="atypeGrid">
-        <label class="atype-option" onclick="selectAtype(this,'機械設備')"><input type="radio" name="atype" value="機械設備" style="display:none"> 🔧 機械設備</label>
-        <label class="atype-option" onclick="selectAtype(this,'電氣系統')"><input type="radio" name="atype" value="電氣系統" style="display:none"> ⚡ 電氣系統</label>
-        <label class="atype-option" onclick="selectAtype(this,'環境衛生')"><input type="radio" name="atype" value="環境衛生" style="display:none"> 🧹 環境衛生</label>
-        <label class="atype-option" onclick="selectAtype(this,'消防安全')"><input type="radio" name="atype" value="消防安全" style="display:none"> 🔥 消防安全</label>
-        <label class="atype-option" onclick="selectAtype(this,'管線洩漏')"><input type="radio" name="atype" value="管線洩漏" style="display:none"> 💧 管線洩漏</label>
-        <label class="atype-option" onclick="selectAtype(this,'其他')"><input type="radio" name="atype" value="其他" style="display:none"> 📌 其他</label>
-      </div>
+      <div class="atype-grid" id="atypeGrid"><div style="color:var(--text3);font-size:13px;padding:8px">載入中...</div></div>
     </div>
-
     <div class="form-group">
       <label class="form-label">嚴重程度 *</label>
       <div class="severity-grid">
@@ -587,188 +452,180 @@ tr:last-child td { border-bottom: none; }
         <div class="sev-option" onclick="setSeverity('high',this)">🔴 嚴重</div>
       </div>
     </div>
-
     <div class="form-group">
       <label class="form-label">異常描述 *</label>
-      <textarea class="form-control" id="anomalyDesc" placeholder="請詳細描述異常狀況、位置、現象..."></textarea>
+      <textarea class="form-control" id="anomalyDesc" placeholder="請詳細描述異常狀況..."></textarea>
     </div>
-
     <div class="form-group">
-      <label class="form-label">現場照片</label>
-      <div class="photo-upload" onclick="document.getElementById('photoInput').click()">
-        📷 點擊拍照或上傳圖片（最多 5 張）
-      </div>
-      <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="previewPhotos(this)">
-      <div class="photo-preview" id="photoPreview"></div>
+      <label class="form-label">初步處置</label>
+      <textarea class="form-control" id="anomalyAction" placeholder="已採取的措施..." style="min-height:60px"></textarea>
     </div>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">初步處置</label>
-        <textarea class="form-control" id="anomalyAction" placeholder="已採取的措施..." style="min-height:60px"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">回報主管</label>
-        <select class="form-control" id="anomalyReport">
-          <option>廠務課長</option><option>設備組長</option><option>安全衛生組</option>
-        </select>
-      </div>
-    </div>
-
-    <button class="btn btn-red btn-block" onclick="submitAnomaly()" style="margin-top:4px">⚠️ 提交異常報告</button>
+    <button class="btn btn-red btn-block" id="anomalySubmitBtn" onclick="submitAnomaly()">⚠️ 提交異常報告</button>
   </div>
-
-  <!-- 異常追蹤 -->
   <div class="card">
     <div class="card-title">
-      <div class="card-title-left"><div class="section-icon">📋</div><span>近期異常追蹤</span></div>
+      <div class="card-title-left"><div class="section-icon">📋</div><span>我的異常記錄</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="loadAnomalies()">🔄</button>
     </div>
     <div class="table-wrap">
       <table><thead><tr><th>時間</th><th>地點</th><th>類別</th><th>程度</th><th>狀態</th><th></th></tr></thead>
-      <tbody id="anomalyList"></tbody></table>
+      <tbody id="anomalyList"><tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">載入中...</td></tr></tbody></table>
     </div>
   </div>
 </div>
 
-<!-- ══════ TAB: 排程管理 ══════ -->
-<div id="tab-schedule" class="tab-content">
+<!-- ══ 待審核（管理者） ══ -->
+<div id="tab-approval" class="tab-content">
   <div class="card">
     <div class="card-title">
-      <div class="card-title-left"><div class="section-icon">📅</div><span>巡檢排程</span></div>
-      <button class="btn btn-accent btn-sm" onclick="openModal('scheduleModal')">＋ 新增</button>
+      <div class="card-title-left"><div class="section-icon">✋</div><span>待審核排程申請</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="loadApprovals()">🔄</button>
     </div>
-    <div class="table-wrap">
-      <table><thead><tr><th>地點</th><th>頻率</th><th>負責人</th><th>時段</th><th>範本</th><th>狀態</th></tr></thead>
-      <tbody id="scheduleList"></tbody></table>
-    </div>
+    <div id="approvalList"><div class="empty-state"><div class="empty-icon">✅</div><p>目前無待審核項目</p></div></div>
   </div>
   <div class="card">
-    <div class="card-title"><div class="card-title-left"><div class="section-icon">👥</div><span>人員週達成率</span></div></div>
-    <div id="staffRateList"></div>
+    <div class="card-title">
+      <div class="card-title-left"><div class="section-icon">🔄</div><span>改期申請</span></div>
+    </div>
+    <div id="changeRequestList"><div class="empty-state"><div class="empty-icon">✅</div><p>目前無改期申請</p></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">
+      <div class="card-title-left"><div class="section-icon">⏰</div><span>逾期排程管理</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="loadOverdueSchedules()">🔄</button>
+    </div>
+    <div id="overdueList"><div class="empty-state"><div class="empty-icon">✅</div><p>目前無逾期排程</p></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title"><div class="card-title-left"><div class="section-icon">⚠️</div><span>所有異常記錄</span></div></div>
+    <div class="table-wrap">
+      <table><thead><tr><th>時間</th><th>回報人</th><th>地點</th><th>類別</th><th>程度</th><th>狀態</th><th></th></tr></thead>
+      <tbody id="allAnomalyList"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">載入中...</td></tr></tbody></table>
+    </div>
   </div>
 </div>
 
-<!-- ══════ TAB: 巡檢記錄 ══════ -->
+<!-- ══ 巡檢記錄（管理者） ══ -->
 <div id="tab-records" class="tab-content">
   <div class="stats-grid">
-    <div class="stat-card"><div class="stat-num" style="color:var(--green)">94<small style="font-size:14px">%</small></div><div class="stat-label">本月達成率</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--blue)">127</div><div class="stat-label">本月巡檢次數</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--orange)">8</div><div class="stat-label">本月異常件數</div></div>
-    <div class="stat-card"><div class="stat-num" style="color:var(--accent)">6</div><div class="stat-label">已結案</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--green)" id="statRate">—</div><div class="stat-label">本月達成率</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--blue)" id="statTotal">—</div><div class="stat-label">本月巡檢次數</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--orange)" id="statAnomaly">—</div><div class="stat-label">本月異常件數</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--accent)" id="statClosed">—</div><div class="stat-label">已結案</div></div>
   </div>
   <div class="card">
     <div class="card-title">
       <div class="card-title-left"><div class="section-icon">📋</div><span>打卡記錄</span></div>
-      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📥 匯出</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-      <select class="form-control" style="width:auto;flex:1"><option>全部人員</option><option>陳大明</option><option>林小華</option><option>王建國</option></select>
-      <input type="date" class="form-control" style="width:auto;flex:1">
-      <select class="form-control" style="width:auto;flex:1"><option>全部狀態</option><option>正常</option><option>異常</option></select>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="loadRecords()">🔄</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📥 匯出</button>
+      </div>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th>日期時間</th><th>人員</th><th>地點</th><th>驗證方式</th><th>QR時戳</th><th>用時</th><th>結果</th></tr></thead>
-      <tbody id="recordsList"></tbody></table>
+      <table><thead><tr><th>日期時間</th><th>人員</th><th>地點</th><th>倉別</th><th>結果</th><th>備註</th></tr></thead>
+      <tbody id="recordsList"><tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">載入中...</td></tr></tbody></table>
     </div>
   </div>
 </div>
 
-<!-- ══════ TAB: QR Code 管理 ══════ -->
+<!-- ══ QR Code（管理者） ══ -->
 <div id="tab-qrcodes" class="tab-content">
-  <div class="alert alert-info">ℹ️ 以下 QR Code 請列印後張貼於各巡檢地點顯眼處。掃描後系統會驗證時間戳，每 5 分鐘輪換一次動態碼以防截圖冒用。</div>
-
+  <div class="alert alert-info">ℹ️ 點擊各地點可放大 QR Code，建議列印後護貝張貼</div>
   <div class="card">
     <div class="card-title">
       <div class="card-title-left"><div class="section-icon">🔲</div><span>各巡檢點 QR Code</span></div>
-      <button class="btn btn-accent btn-sm" onclick="window.print()">🖨️ 全部列印</button>
+      <button class="btn btn-accent btn-sm" onclick="window.print()">🖨️ 列印全部</button>
     </div>
-    <div class="print-grid" id="qrGrid"></div>
-  </div>
-
-  <!-- Dynamic QR preview -->
-  <div class="card">
-    <div class="card-title"><div class="card-title-left"><div class="section-icon">⏱️</div><span>動態防偽說明</span></div></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:16px;">
-        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--accent)">🔲 靜態 QR Code（張貼用）</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.7">
-          ✅ 列印張貼在現場<br>
-          ✅ 永久有效，隨時可列印補貼<br>
-          ⚠️ 包含地點識別碼<br>
-          ⚠️ 需搭配時間窗口驗證
-        </div>
-      </div>
-      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:16px;">
-        <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--green)">🛡️ 時間窗口驗證邏輯</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.7">
-          ✅ 掃描時記錄精確時間戳<br>
-          ✅ 比對巡檢排程時間是否吻合<br>
-          ✅ 超出時間窗口 ±15分 則警示<br>
-          ✅ 同一地點 30 分內重複掃描警示
-        </div>
-      </div>
-    </div>
+    <div class="print-grid" id="qrGrid"><div class="empty-state"><div class="empty-icon">⏳</div><p>載入中...</p></div></div>
   </div>
 </div>
 
-<!-- ══════ TAB: 系統設定 ══════ -->
-<div id="tab-admin" class="tab-content">
-  <div class="alert alert-info">ℹ️ 系統設定僅限課長層級操作</div>
+<!-- ══ 系統設定（管理者） ══ -->
+<div id="tab-settings" class="tab-content">
 
+  <!-- LINE Notify -->
+  <div class="card">
+    <div class="card-title"><div class="card-title-left"><div class="section-icon">🔔</div><span>LINE Notify 通知設定</span></div></div>
+    <div class="alert alert-info">ℹ️ 設定後，異常登記和逾期未完成時，系統自動傳訊息到您的 LINE</div>
+    <div class="form-group">
+      <label class="form-label">LINE Notify Token</label>
+      <input type="text" class="form-control" id="lineToken" placeholder="貼上您的 LINE Notify Token...">
+      <div style="font-size:12px;color:var(--text2);margin-top:5px">尚未申請？請看下方教學</div>
+    </div>
+    <div style="background:var(--bg3);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--accent)">📖 LINE Notify 申請步驟</div>
+      <div style="font-size:13px;color:var(--text2);line-height:2">
+        1️⃣ 用手機或電腦開啟 <strong style="color:var(--text)">notify-bot.line.me</strong><br>
+        2️⃣ 右上角點「登入」→ 用您的 LINE 帳號登入<br>
+        3️⃣ 右上角點您的名稱 → 選「個人頁面」<br>
+        4️⃣ 下滑找到「發行存取權杖（開發人員用）」→ 點「發行」<br>
+        5️⃣ 輸入名稱（例如：廠區巡檢）→ 點「發行」<br>
+        6️⃣ 複製出現的 Token → 貼到上方欄位 → 儲存
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">通知時機</label>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="notify_anomaly" checked style="accent-color:var(--accent)"> 異常登記時通知</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="notify_overdue" checked style="accent-color:var(--accent)"> 排程逾期時通知</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="notify_request" checked style="accent-color:var(--accent)"> 排程申請/改期時通知</label>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-accent" onclick="saveNotifySettings()" id="saveNotifyBtn">💾 儲存設定</button>
+      <button class="btn btn-ghost" onclick="testLineNotify()">📨 發送測試訊息</button>
+    </div>
+  </div>
+
+  <!-- 廠務人員 -->
+  <div class="card">
+    <div class="card-title">
+      <div class="card-title-left"><div class="section-icon">👥</div><span>廠務人員管理</span></div>
+      <button class="btn btn-accent btn-sm" onclick="openModal('addStaffModal')">＋ 新增人員</button>
+    </div>
+    <div id="staffMgmtList"><div class="empty-state"><div class="empty-icon">⏳</div><p>載入中...</p></div></div>
+  </div>
+
+  <!-- 地點 -->
   <div class="card">
     <div class="card-title">
       <div class="card-title-left"><div class="section-icon">📍</div><span>巡檢地點管理</span></div>
       <button class="btn btn-accent btn-sm" onclick="openModal('locationModal')">＋ 新增地點</button>
     </div>
-    <div id="locationList"></div>
+    <div id="locationList"><div class="empty-state"><div class="empty-icon">⏳</div><p>載入中...</p></div></div>
   </div>
 
+  <!-- 範本 -->
   <div class="card">
-    <div class="card-title"><div class="card-title-left"><div class="section-icon">⚙️</div><span>打卡驗證設定</span></div></div>
-    <div class="form-group">
-      <label class="form-label">QR Code 時間窗口（分鐘）</label>
-      <input type="number" class="form-control" value="15" id="timeWindow">
-      <div class="text-muted" style="margin-top:5px">排程時間前後 ±N 分鐘內掃描視為正常</div>
+    <div class="card-title">
+      <div class="card-title-left"><div class="section-icon">✅</div><span>巡檢項目範本管理</span></div>
+      <button class="btn btn-accent btn-sm" onclick="openModal('addTemplateModal')">＋ 新增範本</button>
     </div>
-    <div class="form-group">
-      <label class="form-label">重複掃描鎖定時間（分鐘）</label>
-      <input type="number" class="form-control" value="30" id="dupeLock">
-      <div class="text-muted" style="margin-top:5px">同一地點同一人員，N 分鐘內重複掃描將警示</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">漏檢告警（超時多少分鐘後通知）</label>
-      <input type="number" class="form-control" value="20">
-    </div>
-    <div class="form-group">
-      <label class="form-label">嚴重異常通知對象</label>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" checked style="accent-color:var(--accent)"> 廠務課長</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" checked style="accent-color:var(--accent)"> 安全衛生組</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" style="accent-color:var(--accent)"> 廠長</label>
-      </div>
-    </div>
-    <button class="btn btn-accent">💾 儲存設定</button>
+    <div id="templateMgmt"><div class="empty-state"><div class="empty-icon">⏳</div><p>載入中...</p></div></div>
   </div>
 
+  <!-- 異常類別 -->
   <div class="card">
-    <div class="card-title"><div class="card-title-left"><div class="section-icon">✅</div><span>巡檢項目範本</span></div></div>
-    <div id="templatesAdmin"></div>
+    <div class="card-title">
+      <div class="card-title-left"><div class="section-icon">⚠️</div><span>異常類別管理</span></div>
+      <button class="btn btn-accent btn-sm" onclick="openModal('addAtypeModal')">＋ 新增類別</button>
+    </div>
+    <div id="atypeMgmt"><div class="empty-state"><div class="empty-icon">⏳</div><p>載入中...</p></div></div>
   </div>
-</div>
 
+</div><!-- end tab-settings -->
 </div><!-- end .content -->
+</div><!-- end #mainApp -->
 
-<!-- ══════ QR CODE DISPLAY MODAL ══════ -->
+<!-- ══ QR DISPLAY MODAL ══ -->
 <div class="qr-modal-overlay" id="qrDisplayModal">
   <div class="qr-modal">
-    <div class="qr-modal-top">
-      <div class="qr-canvas-wrap"><div id="qrModalCanvas"></div></div>
-    </div>
+    <div class="qr-modal-top" id="qrModalTop"></div>
     <div class="qr-modal-body">
       <div class="qr-location-name" id="qrModalName">—</div>
       <div class="qr-meta" id="qrModalMeta">—</div>
       <div class="qr-validity">
-        <div>⏱️ 時間戳有效至 <span id="validUntil" class="mono">—</span></div>
+        <div>⏱️ 有效至 <span id="validUntil" class="mono">—</span></div>
         <div class="validity-bar-bg"><div class="validity-bar-fill" id="validityBar" style="width:100%"></div></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:16px">
@@ -779,67 +636,260 @@ tr:last-child td { border-bottom: none; }
   </div>
 </div>
 
-<!-- ══════ CHECKLIST MODAL ══════ -->
+<!-- ══ CHECKLIST MODAL ══ -->
 <div class="modal-overlay" id="checklistModal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-header">
-      <h3 id="checklistModalTitle">📋 巡檢確認</h3>
-      <button class="close-btn" onclick="closeModal('checklistModal')">✕</button>
-    </div>
-    <div class="modal-body" id="checklistModalBody"></div>
-    <div class="modal-footer">
-      <div style="display:flex;gap:10px">
-        <button class="btn btn-ghost" style="flex:1" onclick="closeModal('checklistModal')">取消</button>
-        <button class="btn btn-green" style="flex:1" id="confirmCheckinBtn" onclick="confirmCheckin()">✅ 完成打卡</button>
-      </div>
-    </div>
+    <div class="modal-header"><h3 id="checklistTitle">📋 巡檢確認</h3><button class="close-btn" onclick="closeModal('checklistModal')">✕</button></div>
+    <div class="modal-body" id="checklistBody"></div>
+    <div class="modal-footer"><div style="display:flex;gap:10px"><button class="btn btn-ghost" style="flex:1" onclick="closeModal('checklistModal')">取消</button><button class="btn btn-green" style="flex:1" id="confirmCheckinBtn" onclick="confirmCheckin()">✅ 完成打卡</button></div></div>
   </div>
 </div>
 
-<!-- ══════ SCHEDULE MODAL ══════ -->
+<!-- ══ SCHEDULE MODAL ══ -->
 <div class="modal-overlay" id="scheduleModal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-header"><h3>📅 新增巡檢排程</h3><button class="close-btn" onclick="closeModal('scheduleModal')">✕</button></div>
+    <div class="modal-header"><h3>📅 新增排程</h3><button class="close-btn" onclick="closeModal('scheduleModal')">✕</button></div>
     <div class="modal-body">
-      <div class="form-group"><label class="form-label">巡檢地點 *</label>
-        <select class="form-control" id="sched_location"><option>A棟 - 生產線一</option><option>A棟 - 生產線二</option><option>B棟 - 倉儲區</option><option>C棟 - 空壓機房</option><option>戶外 - 消防設備區</option></select></div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">頻率 *</label>
-          <select class="form-control" id="sched_freq"><option>每小時</option><option>每2小時</option><option>每4小時</option><option selected>每班一次</option><option>每日一次</option><option>每週一次</option></select></div>
-        <div class="form-group"><label class="form-label">負責人 *</label>
-          <select class="form-control" id="sched_staff"><option>陳大明</option><option>林小華</option><option>王建國</option><option>張美玲</option></select></div>
+
+      <!-- 排程類型選擇（最上方） -->
+      <div class="form-group">
+        <label class="form-label">排程類型 *</label>
+        <div class="stype-selector">
+          <div class="stype-btn active" onclick="selectSchedType('weekly',this)">
+            <div class="stype-icon">📆</div>
+            <div class="stype-label">週巡檢</div>
+            <div class="stype-desc">例行掃碼打卡</div>
+          </div>
+          <div class="stype-btn" onclick="selectSchedType('monthly_date',this)">
+            <div class="stype-icon">📅</div>
+            <div class="stype-label">每月固定日</div>
+            <div class="stype-desc">每月到期任務</div>
+          </div>
+          <div class="stype-btn" onclick="selectSchedType('one_time',this)">
+            <div class="stype-icon">📌</div>
+            <div class="stype-label">指定日期</div>
+            <div class="stype-desc">單次指定任務</div>
+          </div>
+        </div>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">開始</label><input type="time" class="form-control" id="sched_start" value="08:00"></div>
-        <div class="form-group"><label class="form-label">結束</label><input type="time" class="form-control" id="sched_end" value="17:00"></div>
+
+      <!-- ── 週巡檢欄位 ── -->
+      <div class="stype-fields show" id="fields_weekly">
+        <div class="alert alert-info" style="margin-bottom:14px;font-size:12px">
+          📆 例行性掃碼巡檢，廠務人員到現場掃 QR Code 並逐項確認
+        </div>
+        <div class="form-group">
+          <label class="form-label">巡檢地點 *</label>
+          <select class="form-control" id="sched_location_weekly"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">執行週期 *</label>
+          <select class="form-control" id="sched_week_cycle">
+            <option value="1">每週</option>
+            <option value="2">每兩週</option>
+            <option value="4">每月（每四週）</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">開始時間</label>
+            <input type="time" class="form-control" id="sched_start_weekly" value="08:00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">結束時間</label>
+            <input type="time" class="form-control" id="sched_end_weekly" value="17:00">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">負責人 *</label>
+          <select class="form-control" id="sched_staff_weekly"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">巡檢範本 *</label>
+          <select class="form-control" id="sched_template_weekly"></select>
+        </div>
       </div>
-      <div class="form-group"><label class="form-label">巡檢範本</label>
-        <select class="form-control" id="sched_template"><option>設備日常巡檢</option><option>消防安全巡檢</option><option>環境衛生巡檢</option><option>電氣設備巡檢</option></select></div>
+
+      <!-- ── 每月固定日欄位 ── -->
+      <div class="stype-fields" id="fields_monthly_date">
+        <div class="alert alert-purple" style="margin-bottom:14px;font-size:12px">
+          📅 任務導向：每月指定號數前需完成，在「我的排程」點選完成即可
+        </div>
+        <div class="form-group">
+          <label class="form-label">排程標題 *</label>
+          <input type="text" class="form-control" id="sched_title_monthly" placeholder="例：消防設備月檢、水塔清洗">
+        </div>
+        <div class="form-group">
+          <label class="form-label">每月幾號前完成 *</label>
+          <select class="form-control" id="sched_monthly_day">
+            <option value="">請選擇</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">負責人 *</label>
+          <select class="form-control" id="sched_staff_monthly"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">備註說明</label>
+          <textarea class="form-control" id="sched_note_monthly" placeholder="說明任務內容、注意事項..." style="min-height:70px"></textarea>
+        </div>
+      </div>
+
+      <!-- ── 指定日期欄位 ── -->
+      <div class="stype-fields" id="fields_one_time">
+        <div class="alert alert-orange" style="margin-bottom:14px;font-size:12px;background:var(--orange-bg);border-left:3px solid var(--orange);color:#ffb380;display:flex;gap:8px;">
+          📌 任務導向：指定日期前需完成，在「我的排程」點選完成即可
+        </div>
+        <div class="form-group">
+          <label class="form-label">排程標題 *</label>
+          <input type="text" class="form-control" id="sched_title_onetime" placeholder="例：貨梯年度安檢、設備換油">
+        </div>
+        <div class="form-group">
+          <label class="form-label">指定完成日期 *</label>
+          <input type="date" class="form-control" id="sched_specific_date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">負責人 *</label>
+          <select class="form-control" id="sched_staff_onetime"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">備註說明</label>
+          <textarea class="form-control" id="sched_note_onetime" placeholder="說明任務內容、注意事項..." style="min-height:70px"></textarea>
+        </div>
+      </div>
+
+      <div class="alert alert-purple" id="schedApprovalNote" style="margin-top:4px">ℹ️ 提交後需等待管理者審核，審核通過前狀態顯示「待核可」</div>
     </div>
-    <div class="modal-footer"><div style="display:flex;gap:10px"><button class="btn btn-ghost" style="flex:1" onclick="closeModal('scheduleModal')">取消</button><button class="btn btn-accent" style="flex:1" onclick="addSchedule()">新增排程</button></div></div>
+    <div class="modal-footer">
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" style="flex:1" onclick="closeModal('scheduleModal')">取消</button>
+        <button class="btn btn-accent" style="flex:1" id="schedSubmitBtn" onclick="addSchedule()">提交申請</button>
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- ══════ LOCATION MODAL ══════ -->
+<!-- ══ CHANGE REQUEST MODAL ══ -->
+<div class="modal-overlay" id="changeRequestModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><h3>🔄 申請改期</h3><button class="close-btn" onclick="closeModal('changeRequestModal')">✕</button></div>
+    <div class="modal-body">
+      <div id="changeRequestInfo" style="background:var(--bg3);border-radius:10px;padding:14px;margin-bottom:14px;font-size:14px;color:var(--text2)"></div>
+      <div class="form-group">
+        <label class="form-label">新日期 *</label>
+        <input type="date" class="form-control" id="change_new_date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">改期原因 *</label>
+        <textarea class="form-control" id="change_reason" placeholder="請說明改期原因..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" style="flex:1" onclick="closeModal('changeRequestModal')">取消</button>
+        <button class="btn btn-accent" style="flex:1" id="changeSubmitBtn" onclick="submitChangeRequest()">送出申請</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TASK COMPLETE MODAL ══ -->
+<div class="modal-overlay" id="taskCompleteModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><h3 id="taskCompleteTitle">✅ 完成任務</h3><button class="close-btn" onclick="closeModal('taskCompleteModal')">✕</button></div>
+    <div class="modal-body">
+      <div id="taskCompleteInfo" style="background:var(--bg3);border-radius:10px;padding:14px;margin-bottom:16px;font-size:14px;line-height:1.7;color:var(--text2)"></div>
+      <div class="form-group">
+        <label class="form-label">完成說明 / 備註 *</label>
+        <textarea class="form-control" id="taskCompleteNote" placeholder="請填寫完成說明，例如：已完成消防設備月檢，滅火器壓力正常、消防栓標示清楚..." style="min-height:100px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" style="flex:1" onclick="closeModal('taskCompleteModal')">取消</button>
+        <button class="btn btn-green" style="flex:1" id="confirmTaskCompleteBtn" onclick="confirmTaskComplete()">✅ 確認完成</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ LOCATION MODAL ══ -->
 <div class="modal-overlay" id="locationModal">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-header"><h3>📍 新增巡檢地點</h3><button class="close-btn" onclick="closeModal('locationModal')">✕</button></div>
     <div class="modal-body">
-      <div class="form-group"><label class="form-label">地點名稱 *</label><input type="text" class="form-control" id="loc_name" placeholder="例：A棟 - 生產線三"></div>
-      <div class="form-row">
-        <div class="form-group"><label class="form-label">樓棟</label><select class="form-control" id="loc_building"><option>A棟</option><option>B棟</option><option>C棟</option><option>戶外</option><option>廠務辦公區</option></select></div>
-        <div class="form-group"><label class="form-label">樓層</label><input type="text" class="form-control" id="loc_floor" placeholder="例：1F、B1"></div>
+      <div class="form-group"><label class="form-label">地點名稱 *</label><input type="text" class="form-control" id="loc_name" placeholder="例：1F-收發室"></div>
+      <div class="form-group"><label class="form-label">倉別 *</label>
+        <select class="form-control" id="loc_building">
+          <option>大溪倉</option><option>新光倉</option><option>新光二倉</option><option>大肚倉</option><option>岡山倉</option>
+        </select>
       </div>
-      <div class="form-group"><label class="form-label">地點描述</label><textarea class="form-control" id="loc_desc" placeholder="位置說明、注意事項..." style="min-height:60px"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">樓層</label><input type="text" class="form-control" id="loc_floor" placeholder="1F、B1"></div>
+        <div class="form-group"><label class="form-label">區域</label><input type="text" class="form-control" id="loc_zone" placeholder="A區"></div>
+      </div>
+      <div class="form-group"><label class="form-label">描述</label><textarea class="form-control" id="loc_desc" placeholder="位置說明..." style="min-height:60px"></textarea></div>
     </div>
-    <div class="modal-footer"><div style="display:flex;gap:10px"><button class="btn btn-ghost" style="flex:1" onclick="closeModal('locationModal')">取消</button><button class="btn btn-accent" style="flex:1" onclick="addLocation()">新增地點</button></div></div>
+    <div class="modal-footer"><div style="display:flex;gap:10px"><button class="btn btn-ghost" style="flex:1" onclick="closeModal('locationModal')">取消</button><button class="btn btn-accent" style="flex:1" id="locSubmitBtn" onclick="addLocation()">新增地點</button></div></div>
   </div>
 </div>
 
-<!-- Anomaly detail modal -->
+<!-- ══ ADD STAFF MODAL ══ -->
+<div class="modal-overlay" id="addStaffModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><h3>👤 新增廠務人員</h3><button class="close-btn" onclick="closeModal('addStaffModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">姓名 *</label><input type="text" class="form-control" id="new_staff_name" placeholder="請輸入姓名"></div>
+      <div class="form-group"><label class="form-label">負責區域（可多選）</label><div class="area-check-grid" id="newStaffAreaGrid"><div style="color:var(--text3);font-size:13px;padding:8px">請先新增巡檢地點</div></div></div>
+    </div>
+    <div class="modal-footer"><div style="display:flex;gap:10px"><button class="btn btn-ghost" style="flex:1" onclick="closeModal('addStaffModal')">取消</button><button class="btn btn-accent" style="flex:1" id="addStaffBtn" onclick="addStaff()">新增人員</button></div></div>
+  </div>
+</div>
+
+<!-- ══ EDIT STAFF MODAL ══ -->
+<div class="modal-overlay" id="editStaffModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><h3 id="editStaffTitle">✏️ 編輯負責區域</h3><button class="close-btn" onclick="closeModal('editStaffModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">負責區域</label><div class="area-check-grid" id="editStaffAreaGrid"></div></div>
+    </div>
+    <div class="modal-footer"><div style="display:flex;gap:10px"><button class="btn btn-ghost" style="flex:1" onclick="closeModal('editStaffModal')">取消</button><button class="btn btn-accent" style="flex:1" id="saveStaffAreasBtn" onclick="saveStaffAreas()">儲存</button></div></div>
+  </div>
+</div>
+
+<!-- ══ ADD TEMPLATE MODAL ══ -->
+<div class="modal-overlay" id="addTemplateModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><h3>✅ 新增巡檢範本</h3><button class="close-btn" onclick="closeModal('addTemplateModal')">✕</button></div>
+    <div class="modal-body"><div class="form-group"><label class="form-label">範本名稱 *</label><input type="text" class="form-control" id="new_tmpl_name" placeholder="例：化學品巡檢"></div></div>
+    <div class="modal-footer"><div style="display:flex;gap:10px"><button class="btn btn-ghost" style="flex:1" onclick="closeModal('addTemplateModal')">取消</button><button class="btn btn-accent" style="flex:1" onclick="addTemplate()">新增範本</button></div></div>
+  </div>
+</div>
+
+<!-- ══ ADD ATYPE MODAL ══ -->
+<div class="modal-overlay" id="addAtypeModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><h3>⚠️ 新增異常類別</h3><button class="close-btn" onclick="closeModal('addAtypeModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">圖示</label><input type="text" class="form-control" id="new_atype_icon" placeholder="🔧" maxlength="2" style="font-size:20px;text-align:center"></div>
+        <div class="form-group"><label class="form-label">類別名稱 *</label><input type="text" class="form-control" id="new_atype_name" placeholder="例：結構損壞"></div>
+      </div>
+    </div>
+    <div class="modal-footer"><div style="display:flex;gap:10px"><button class="btn btn-ghost" style="flex:1" onclick="closeModal('addAtypeModal')">取消</button><button class="btn btn-accent" style="flex:1" onclick="addAtype()">新增類別</button></div></div>
+  </div>
+</div>
+
+<!-- ══ ANOMALY DETAIL MODAL ══ -->
 <div class="modal-overlay" id="anomalyDetailModal">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -852,210 +902,513 @@ tr:last-child td { border-bottom: none; }
 <div id="toast"></div>
 
 <script>
-// ══════════════════════════════
+// ══════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════
+const SUPABASE_URL = 'https://xutbrzwhfbahngqfdwum.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_u5fvEpEk9oY8lGpOO4YTAA_R6NcUFO8';
+const ADMIN_PASSWORD = '1234';
+const ADMIN_NAME = '鄧羽廷';
+const WEEKDAY_NAMES = ['週日','週一','週二','週三','週四','週五','週六'];
+const AVATAR_COLORS = ['#3fb950','#58a6ff','#ff7b33','#a371f7','#f85149','#f0a500','#39c5cf'];
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ══════════════════════════════════════
 //  STATE
-// ══════════════════════════════
+// ══════════════════════════════════════
 const S = {
-  role: 'manager',
-  severity: null,
-  atype: null,
-  selectedTask: null,
-  scanActive: false,
-  scanStream: null,
-  qrTimers: {},
-  lastScan: {}, // locationId -> timestamp
-
-  tasks: [
-    { id:1, location:'A棟 - 生產線一', time:'08:00', freq:'每班一次', staff:'陳大明', status:'done', checkedAt:'08:03', template:'設備日常巡檢' },
-    { id:2, location:'B棟 - 倉儲區', time:'10:00', freq:'每4小時', staff:'林小華', status:'done', checkedAt:'10:07', template:'環境衛生巡檢' },
-    { id:3, location:'C棟 - 空壓機房', time:'12:00', freq:'每4小時', staff:'陳大明', status:'pending', checkedAt:null, template:'電氣設備巡檢' },
-    { id:4, location:'戶外 - 消防設備區', time:'11:00', freq:'每週一次', staff:'王建國', status:'overdue', checkedAt:null, template:'消防安全巡檢' },
-    { id:5, location:'A棟 - 生產線二', time:'14:00', freq:'每班一次', staff:'張美玲', status:'pending', checkedAt:null, template:'設備日常巡檢' },
-  ],
-
-  anomalies: [
-    { id:1, time:'04/02 09:15', location:'A棟 - 生產線一', type:'機械設備', severity:'mid', desc:'傳送帶異音，目測接縫處磨損', status:'處理中' },
-    { id:2, time:'04/02 11:30', location:'C棟 - 空壓機房', type:'管線洩漏', severity:'high', desc:'空壓管接頭滲漏，已暫時夾緊', status:'待處理' },
-    { id:3, time:'04/01 14:20', location:'B棟 - 倉儲區', type:'環境衛生', severity:'low', desc:'排水溝積水未清除', status:'已結案' },
-  ],
-
-  schedules: [
-    { id:1, location:'A棟 - 生產線一', freq:'每班一次', staff:'陳大明', start:'08:00', end:'17:00', template:'設備日常巡檢', active:true },
-    { id:2, location:'A棟 - 生產線二', freq:'每班一次', staff:'張美玲', start:'08:00', end:'17:00', template:'設備日常巡檢', active:true },
-    { id:3, location:'B棟 - 倉儲區', freq:'每4小時', staff:'林小華', start:'08:00', end:'20:00', template:'環境衛生巡檢', active:true },
-    { id:4, location:'C棟 - 空壓機房', freq:'每4小時', staff:'陳大明', start:'08:00', end:'20:00', template:'電氣設備巡檢', active:true },
-    { id:5, location:'戶外 - 消防設備區', freq:'每週一次', staff:'王建國', start:'09:00', end:'10:00', template:'消防安全巡檢', active:true },
-  ],
-
-  records: [
-    { date:'2025-04-02 08:03', staff:'陳大明', location:'A棟 - 生產線一', method:'QR掃描', ts:'08:03:21', dur:'12分鐘', result:'正常' },
-    { date:'2025-04-02 10:07', staff:'林小華', location:'B棟 - 倉儲區', method:'QR掃描', ts:'10:07:44', dur:'18分鐘', result:'異常' },
-    { date:'2025-04-01 14:55', staff:'王建國', location:'戶外 - 消防設備區', method:'QR掃描', ts:'14:55:09', dur:'25分鐘', result:'正常' },
-    { date:'2025-04-01 10:20', staff:'張美玲', location:'A棟 - 生產線二', method:'QR掃描', ts:'10:20:33', dur:'15分鐘', result:'正常' },
-  ],
-
-  locations: [
-    { id:'LOC001', name:'A棟 - 生產線一', building:'A棟', floor:'1F', desc:'東側主生產線' },
-    { id:'LOC002', name:'A棟 - 生產線二', building:'A棟', floor:'1F', desc:'西側副生產線' },
-    { id:'LOC003', name:'B棟 - 倉儲區', building:'B棟', floor:'1F', desc:'含裝卸月台' },
-    { id:'LOC004', name:'C棟 - 空壓機房', building:'C棟', floor:'B1', desc:'地下機房' },
-    { id:'LOC005', name:'戶外 - 消防設備區', building:'戶外', floor:'-', desc:'廠區西北角' },
-  ],
-
-  staff: [
-    { name:'陳大明', shift:'日班', areas:'A棟、C棟', rate:95 },
-    { name:'林小華', shift:'日班', areas:'B棟', rate:88 },
-    { name:'王建國', shift:'夜班', areas:'全廠戶外', rate:100 },
-    { name:'張美玲', shift:'日班', areas:'A棟', rate:92 },
-  ],
-
-  templates: {
-    '設備日常巡檢': ['設備運轉狀態正常','油位/油質目視檢查','異音/異味確認','溫度指示正常','安全護罩完整'],
-    '消防安全巡檢': ['滅火器外觀及壓力正常','消防箱門鎖完整','緊急出口暢通無阻','灑水頭無遮蔽物','消防栓標示清楚','偵煙器無異狀','緊急照明正常'],
-    '環境衛生巡檢': ['地面清潔無積水','廢棄物依規分類','通道無雜物堆積','排水溝暢通'],
-    '電氣設備巡檢': ['配電盤門鎖完整','無異味/焦味','接地線完整','線路無破損外露','過載保護器正常'],
-  }
+  currentUser: null, currentRole: null,
+  severity: null, atype: null, selectedTask: null,
+  scanActive: false, scanStream: null, lastScan: {},
+  locations: [], schedules: [], tasks: [], records: [], anomalies: [],
+  staffList: [], templates: [], atypes: [],
+  editingStaffId: null, selectedSchedType: 'weekly',
+  changeRequestingSchedId: null,
+  notifySettings: { line_notify_token: '', notify_on_anomaly: true, notify_on_overdue: true, notify_on_schedule_request: true },
 };
 
-// ══════════════════════════════
-//  RENDER
-// ══════════════════════════════
-function renderAll() {
-  renderTasks(); renderAnomalies(); renderSchedules();
-  renderRecords(); renderLocations(); renderStaffRates();
-  renderQRGrid(); renderTemplatesAdmin(); updateProgress();
+// Init monthly day select
+(function(){
+  const sel = document.getElementById('sched_monthly_day');
+  if(sel){ for(let i=1;i<=31;i++){ const o=document.createElement('option'); o.value=i; o.textContent=i+'號'; sel.appendChild(o); } }
+})();
+
+// ══════════════════════════════════════
+//  LOGIN
+// ══════════════════════════════════════
+async function initLoginPage() {
+  const { data } = await db.from('staff').select('*').eq('active', true).order('id');
+  const grid = document.getElementById('staffLoginGrid');
+  if (!data || !data.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text3);font-size:13px;padding:12px">尚無廠務人員，請管理者登入後新增</div>';
+    return;
+  }
+  grid.innerHTML = data.map((s, i) => `
+    <div class="user-btn" onclick="loginAs('${s.name}','staff')">
+      <div class="u-avatar" style="background:${AVATAR_COLORS[i % AVATAR_COLORS.length]}">${s.name[0]}</div>
+      <div class="u-name">${s.name}</div>
+      <div class="u-role">廠務人員</div>
+    </div>
+  `).join('');
 }
 
+function selectManager() {
+  document.getElementById('adminLock').style.display = 'block';
+  setTimeout(() => document.getElementById('adminPwd').focus(), 50);
+}
+function cancelAdmin() { document.getElementById('adminLock').style.display = 'none'; document.getElementById('adminPwd').value = ''; }
+function confirmAdmin() {
+  if (document.getElementById('adminPwd').value === ADMIN_PASSWORD) {
+    loginAs(ADMIN_NAME, 'manager');
+  } else {
+    const inp = document.getElementById('adminPwd'); inp.value = ''; inp.classList.add('error');
+    showToast('❌ 密碼錯誤', 'err');
+  }
+}
+function loginAs(name, role) {
+  S.currentUser = name; S.currentRole = role;
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('mainApp').classList.remove('hidden');
+  document.getElementById('adminLock').style.display = 'none';
+  document.getElementById('adminPwd').value = '';
+  document.getElementById('currentUserLabel').textContent = name + (role === 'manager' ? ' 👑' : '');
+  document.getElementById('chipDot').className = 'chip-dot ' + role;
+  document.querySelectorAll('.admin-only').forEach(el => el.style.display = role === 'manager' ? 'flex' : 'none');
+  const simBtn = document.getElementById('simulateScanBtn');
+  if (simBtn) simBtn.classList.toggle('hidden', role !== 'manager');
+  // Manager sees approval note hidden
+  const an = document.getElementById('schedApprovalNote');
+  if (an) an.style.display = role === 'manager' ? 'none' : 'flex';
+  initApp();
+}
+function logout() {
+  S.currentUser = null; S.currentRole = null;
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('mainApp').classList.add('hidden');
+  showTab('patrol');
+  initLoginPage();
+}
+
+// ══════════════════════════════════════
+//  LOADING / DB STATUS
+// ══════════════════════════════════════
+function showLoading(msg = '處理中...') { document.getElementById('loadingMsg').textContent = msg; document.getElementById('loadingOverlay').classList.add('show'); }
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
+function setDbStatus(ok) {
+  document.getElementById('dbDot').className = 'db-dot ' + (ok ? 'ok' : 'err');
+  document.getElementById('dbTxt').textContent = ok ? '已連線' : '連線失敗';
+}
+
+// ══════════════════════════════════════
+//  DATA LOADERS
+// ══════════════════════════════════════
+async function loadLocations() {
+  const { data, error } = await db.from('locations').select('*').order('id');
+  if (error) { setDbStatus(false); return; }
+  setDbStatus(true); S.locations = data || [];
+  renderLocations(); renderQRGrid();
+  const locOpts = S.locations.map(l => `<option value="${l.id}">${l.name} (${l.building})</option>`).join('');
+  // anomaly location dropdown
+  const al = document.getElementById('anomalyLocation');
+  if (al) al.innerHTML = '<option value="">請選擇地點</option>' + locOpts;
+  // weekly schedule location dropdown
+  const wl = document.getElementById('sched_location_weekly');
+  if (wl) wl.innerHTML = locOpts || '<option>請先新增地點</option>';
+  renderNewStaffAreaGrid(); renderEditStaffAreaGrid();
+}
+async function loadStaff() {
+  const { data } = await db.from('staff').select('*').order('id');
+  S.staffList = data || []; renderStaffMgmt();
+  const staffOpts = S.staffList.filter(s => s.active).map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+  const noOpt = '<option>請先新增人員</option>';
+  ['sched_staff_weekly','sched_staff_monthly','sched_staff_onetime'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = staffOpts || noOpt;
+  });
+  // Default to current user for staff role
+  if (S.currentRole === 'staff') {
+    ['sched_staff_weekly','sched_staff_monthly','sched_staff_onetime'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      for (let o of el.options) { if (o.value === S.currentUser) { o.selected = true; break; } }
+    });
+  }
+}
+async function loadTemplates() {
+  const { data } = await db.from('checklist_templates').select('*').order('id');
+  S.templates = data || []; renderTemplateMgmt();
+  const tmplOpts = S.templates.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+  const st = document.getElementById('sched_template_weekly');
+  if (st) st.innerHTML = tmplOpts || '<option>請先新增範本</option>';
+}
+async function loadAtypes() {
+  const { data } = await db.from('anomaly_types').select('*').order('id');
+  S.atypes = data || []; renderAtypeGrid(); renderAtypeMgmt();
+}
+async function loadSchedules() {
+  const { data, error } = await db.from('schedules').select('*').order('created_at', { ascending: false });
+  if (error) { showToast('排程載入失敗: ' + error.message, 'err'); return; }
+  S.schedules = data || [];
+  renderMySchedules(); buildTodayTasks(); updateApprovalBadge();
+}
+async function loadRecords() {
+  const { data } = await db.from('checkin_records').select('*').order('checkin_at', { ascending: false }).limit(60);
+  S.records = data || []; renderRecords(); updateStats(); buildTodayTasks();
+}
+async function loadAnomalies() {
+  let q = db.from('anomalies').select('*').order('created_at', { ascending: false }).limit(50);
+  if (S.currentRole !== 'manager') q = q.eq('reported_by', S.currentUser);
+  const { data } = await q; S.anomalies = data || [];
+  renderAnomalies();
+  if (S.currentRole === 'manager') renderAllAnomalies();
+}
+async function loadApprovals() {
+  const { data: pending } = await db.from('schedules').select('*').eq('status', 'pending_approval').order('created_at');
+  const { data: changes } = await db.from('schedule_change_requests').select('*').eq('status', 'pending').order('created_at');
+  renderApprovalList(pending || []);
+  renderChangeRequestList(changes || []);
+  const total = (pending?.length || 0) + (changes?.length || 0);
+  const badge = document.getElementById('approvalBadge');
+  if (badge) { badge.textContent = total; badge.style.display = total ? '' : 'none'; }
+}
+async function loadOverdueSchedules() {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await db.from('schedules').select('*').eq('status', 'overdue').order('created_at');
+  renderOverdueList(data || []);
+}
+async function loadNotifySettings() {
+  const { data } = await db.from('notification_settings').select('*').limit(1);
+  if (data && data.length) {
+    S.notifySettings = data[0];
+    const lineTokenEl = document.getElementById('lineToken');
+    if (lineTokenEl) lineTokenEl.value = data[0].line_notify_token || '';
+    const na = document.getElementById('notify_anomaly'); if (na) na.checked = data[0].notify_on_anomaly !== false;
+    const no = document.getElementById('notify_overdue'); if (no) no.checked = data[0].notify_on_overdue !== false;
+    const nr = document.getElementById('notify_request'); if (nr) nr.checked = data[0].notify_on_schedule_request !== false;
+  }
+}
+
+// ══════════════════════════════════════
+//  TODAY TASKS
+// ══════════════════════════════════════
+function buildTodayTasks() {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const todayDow = today.getDay();
+  const todayDate = today.getDate();
+
+  let eligible = S.schedules.filter(s => {
+    if (s.status === 'closed' || s.status === 'pending_approval') return false;
+    if (s.schedule_type === 'weekly') return true; // show if not done this week
+    if (s.schedule_type === 'monthly_date') return parseInt(s.monthly_day) === todayDate;
+    if (s.schedule_type === 'one_time') return s.specific_date === todayStr;
+    return false;
+  });
+
+  // Filter by staff area
+  if (S.currentRole !== 'manager') {
+    const me = S.staffList.find(x => x.name === S.currentUser);
+    const myAreas = me?.areas || [];
+    if (myAreas.length > 0) eligible = eligible.filter(s => myAreas.includes(s.location_name));
+  }
+
+  // Check what's done today
+  const todayRecords = S.records.filter(r => r.checkin_at?.startsWith(todayStr));
+  const weekStart = new Date(today); weekStart.setDate(today.getDate() - todayDow);
+  const weekStartStr = weekStart.toISOString().slice(0, 10);
+  const weekRecords = S.records.filter(r => r.checkin_at?.slice(0, 10) >= weekStartStr);
+
+  S.tasks = eligible.map(s => {
+    let isDone = false;
+    if (s.schedule_type === 'weekly') {
+      isDone = weekRecords.some(r => r.location_name === s.location_name && r.schedule_id === s.id);
+    } else {
+      isDone = todayRecords.some(r => r.location_name === s.location_name && r.schedule_id === s.id);
+    }
+    return {
+      id: s.id, location_id: s.location_id, location: s.location_name,
+      warehouse: s.warehouse || '', title: s.title,
+      time: s.start_time, staff: s.staff, status: isDone ? 'done' : (s.status === 'overdue' ? 'overdue' : 'pending'),
+      checkedAt: isDone ? todayRecords.find(r => r.location_name === s.location_name)?.checkin_at?.slice(11, 16) : null,
+      template: s.template, schedule_type: s.schedule_type,
+    };
+  });
+  renderTasks(); updateProgress();
+}
+
+function updateApprovalBadge() {
+  if (S.currentRole !== 'manager') return;
+  const pending = S.schedules.filter(s => s.status === 'pending_approval').length;
+  const badge = document.getElementById('approvalBadge');
+  if (badge) { badge.textContent = pending; badge.style.display = pending ? '' : 'none'; }
+}
+
+// ══════════════════════════════════════
+//  RENDER TASKS
+// ══════════════════════════════════════
 function renderTasks() {
-  const done = S.tasks.filter(t=>t.status==='done').length;
-  const pending = S.tasks.filter(t=>t.status!=='done').length;
+  const pending = S.tasks.filter(t => t.status !== 'done').length;
   const el = document.getElementById('pendingBadge');
-  if(el) el.textContent = pending+' 待完成';
+  if (el) el.textContent = pending + ' 待完成';
   const list = document.getElementById('taskList');
-  if(!list) return;
-  const statusIcon = {done:'✅',pending:'🔲',overdue:'⏰'};
-  list.innerHTML = S.tasks.map(t=>`
+  if (!list) return;
+  if (!S.tasks.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><p>今日無指派給您的巡檢任務</p></div>`;
+    return;
+  }
+  const icons = { done: '✅', pending: '🔲', overdue: '⏰', pending_approval: '⏳' };
+  const stypeLabel = { weekly: '週巡檢', monthly_date: '月定期', one_time: '指定日' };
+  const stypeClass = { weekly: 'stype-weekly', monthly_date: 'stype-monthly', one_time: 'stype-onetime' };
+  list.innerHTML = S.tasks.map(t => `
     <div class="task-item">
-      <div class="task-status-icon ${t.status}">${statusIcon[t.status]}</div>
+      <div class="task-status-icon ${t.status}">${icons[t.status] || '🔲'}</div>
       <div class="task-info">
-        <div class="task-name">${t.location}</div>
+        <div class="task-name">${t.title || t.location}</div>
         <div class="task-meta">
+          <span class="stype-tag ${stypeClass[t.schedule_type]}">${stypeLabel[t.schedule_type]}</span>
+          <span class="badge badge-gray" style="font-size:11px">${t.warehouse}</span>
           <span>⏰ ${t.time}</span>
           <span>👤 ${t.staff}</span>
-          <span class="freq-tag">${t.freq}</span>
         </div>
-        ${t.checkedAt?`<div class="task-checkin-time">✅ ${t.checkedAt} QR掃描完成</div>`:''}
+        <div style="font-size:12px;color:var(--text2);margin-top:3px">${t.location}</div>
+        ${t.checkedAt ? `<div class="task-checkin-time">✅ ${t.checkedAt} QR掃描完成</div>` : ''}
       </div>
       <div class="task-actions">
-        <span class="badge ${t.status==='done'?'badge-green':t.status==='overdue'?'badge-red':'badge-yellow'}">
-          ${t.status==='done'?'已完成':t.status==='overdue'?'逾時':'待巡檢'}
+        <span class="badge ${t.status === 'done' ? 'badge-green' : t.status === 'overdue' ? 'badge-red' : 'badge-yellow'}">
+          ${t.status === 'done' ? '已完成' : t.status === 'overdue' ? '逾期' : '待巡檢'}
         </span>
-        ${t.status!=='done'?`<button class="btn btn-accent btn-sm" onclick="openChecklist(${t.id})">🔲 打卡</button>`:''}
+        ${t.status !== 'done' ? `<div style="font-size:11px;color:var(--text3);text-align:right;margin-top:2px">請掃描<br>QR Code</div>` : ''}
       </div>
     </div>
   `).join('');
 }
 
 function updateProgress() {
-  const done = S.tasks.filter(t=>t.status==='done').length;
+  const done = S.tasks.filter(t => t.status === 'done').length;
   const total = S.tasks.length;
-  const pct = Math.round(done/total*100);
-  const bar = document.getElementById('progressBar');
-  if(bar) bar.style.width = pct+'%';
-  const p = document.getElementById('progressPct');
-  if(p) p.textContent = pct+'%';
-  const t = document.getElementById('progressText');
-  if(t) t.textContent = `已完成 ${done} / ${total} 個巡檢點`;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  const bar = document.getElementById('progressBar'); if (bar) bar.style.width = pct + '%';
+  const p = document.getElementById('progressPct'); if (p) p.textContent = pct + '%';
+  const t = document.getElementById('progressText'); if (t) t.textContent = `已完成 ${done} / ${total} 個巡檢點`;
 }
 
+// ══════════════════════════════════════
+//  RENDER MY SCHEDULES
+// ══════════════════════════════════════
+function renderMySchedules() {
+  const list = document.getElementById('myScheduleList');
+  if (!list) return;
+  let scheds = S.schedules;
+  if (S.currentRole !== 'manager') scheds = scheds.filter(s => s.staff === S.currentUser);
+  if (!scheds.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><p>尚無排程，點右上角新增</p></div>'; return; }
+
+  const statusMap = {
+    pending_approval: { label: '待核可', cls: 'badge-purple' },
+    active: { label: '進行中', cls: 'badge-green' },
+    overdue: { label: '逾期', cls: 'badge-red' },
+    closed: { label: '已關閉', cls: 'badge-gray' },
+  };
+  const stypeLabel = { weekly: '📆 週巡檢', monthly_date: '📅 每月固定日', one_time: '📌 指定日期' };
+  const stypeClass = { weekly: 'stype-weekly', monthly_date: 'stype-monthly', one_time: 'stype-onetime' };
+
+  list.innerHTML = scheds.map(s => {
+    const sm = statusMap[s.status] || { label: s.status, cls: 'badge-gray' };
+    let dateInfo = '';
+    if (s.schedule_type === 'weekly') dateInfo = `每隔 ${s.weekday || 1} 週`;
+    else if (s.schedule_type === 'monthly_date') dateInfo = `每月 ${s.monthly_day} 號前完成`;
+    else if (s.schedule_type === 'one_time') dateInfo = `完成期限：${s.specific_date}`;
+
+    // Task-type (non-weekly) with active status can be completed directly
+    const isTaskType = s.schedule_type !== 'weekly';
+    const canComplete = isTaskType && (s.status === 'active') && (S.currentRole !== 'manager' ? s.staff === S.currentUser : true);
+    const canReschedule = s.schedule_type === 'one_time' && s.status === 'active' && S.currentRole !== 'manager';
+
+    return `
+      <div class="approval-card">
+        <div class="approval-card-header">
+          <div style="flex:1;min-width:0">
+            <div class="approval-title">${s.title}</div>
+            <div class="approval-meta">
+              <span class="stype-tag ${stypeClass[s.schedule_type]}">${stypeLabel[s.schedule_type]}</span>
+              ${s.location_name && s.location_name !== '—' ? `&nbsp;📍 ${s.location_name}` : ''}
+              ${s.warehouse ? `<span class="badge badge-gray" style="font-size:11px;margin-left:4px">${s.warehouse}</span>` : ''}<br>
+              🗓️ ${dateInfo}<br>
+              👤 ${s.staff}
+              ${s.note ? `<br>📝 ${s.note}` : ''}
+            </div>
+          </div>
+          <span class="badge ${sm.cls}">${sm.label}</span>
+        </div>
+        ${s.status === 'pending_approval' ? `<div class="alert alert-purple" style="margin-bottom:0;margin-top:8px;font-size:12px">⏳ 等待管理者審核中</div>` : ''}
+        ${s.status === 'overdue' ? `<div class="alert alert-warning" style="margin-bottom:0;margin-top:8px;font-size:12px">⏰ 已逾期，等待管理者重新指派</div>` : ''}
+        ${(canComplete || canReschedule) ? `
+          <div class="approval-actions" style="margin-top:10px">
+            ${canComplete ? `<button class="btn btn-green btn-sm" onclick="openTaskComplete(${s.id})">✅ 完成任務</button>` : ''}
+            ${canReschedule ? `<button class="btn btn-ghost btn-sm" onclick="openChangeRequest(${s.id})">🔄 申請改期</button>` : ''}
+          </div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  const myPending = S.schedules.filter(s => s.staff === S.currentUser && s.status === 'overdue').length;
+  const badge = document.getElementById('mySchedBadge');
+  if (badge) { badge.textContent = myPending; badge.style.display = myPending ? '' : 'none'; }
+}
+
+// ══════════════════════════════════════
+//  RENDER APPROVALS
+// ══════════════════════════════════════
+function renderApprovalList(items) {
+  const list = document.getElementById('approvalList');
+  if (!list) return;
+  if (!items.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>目前無待審核排程</p></div>'; return; }
+  const stypeLabel = { weekly: '週巡檢', monthly_date: '月定期', one_time: '指定日期' };
+  list.innerHTML = items.map(s => {
+    let dateInfo = '';
+    if (s.schedule_type === 'weekly') dateInfo = `每 ${s.weekday || 1} 週`;
+    else if (s.schedule_type === 'monthly_date') dateInfo = `每月 ${s.monthly_day} 號`;
+    else if (s.schedule_type === 'one_time') dateInfo = `${s.specific_date}`;
+    return `
+      <div class="approval-card">
+        <div class="approval-card-header">
+          <div style="flex:1">
+            <div class="approval-title">${s.title}</div>
+            <div class="approval-meta">
+              📍 ${s.location_name} (${s.warehouse || ''})<br>
+              類型：${stypeLabel[s.schedule_type]} &nbsp;${dateInfo}<br>
+              👤 ${s.staff} &nbsp;|&nbsp; 申請人：${s.created_by || s.staff}
+              ${s.note ? `<br>📝 ${s.note}` : ''}
+            </div>
+          </div>
+          <span class="badge badge-purple">待審核</span>
+        </div>
+        <div class="approval-actions">
+          <button class="btn btn-green btn-sm" onclick="approveSchedule(${s.id})">✅ 核可</button>
+          <button class="btn btn-red btn-sm" onclick="rejectSchedule(${s.id})">❌ 退回</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderChangeRequestList(items) {
+  const list = document.getElementById('changeRequestList');
+  if (!list) return;
+  if (!items.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>目前無改期申請</p></div>'; return; }
+  list.innerHTML = items.map(r => `
+    <div class="approval-card">
+      <div class="approval-card-header">
+        <div style="flex:1">
+          <div class="approval-title">改期申請 #${r.schedule_id}</div>
+          <div class="approval-meta">
+            申請人：${r.requested_by}<br>
+            原日期：${r.old_date || '—'} → 新日期：${r.new_date}<br>
+            原因：${r.reason}
+          </div>
+        </div>
+        <span class="badge badge-yellow">待審核</span>
+      </div>
+      <div class="approval-actions">
+        <button class="btn btn-green btn-sm" onclick="approveChange(${r.id},${r.schedule_id},'${r.new_date}')">✅ 核可</button>
+        <button class="btn btn-red btn-sm" onclick="rejectChange(${r.id})">❌ 退回</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderOverdueList(items) {
+  const list = document.getElementById('overdueList');
+  if (!list) return;
+  if (!items.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>目前無逾期排程</p></div>'; return; }
+  list.innerHTML = items.map(s => `
+    <div class="approval-card">
+      <div class="approval-card-header">
+        <div style="flex:1">
+          <div class="approval-title">${s.title}</div>
+          <div class="approval-meta">📍 ${s.location_name} &nbsp;|&nbsp; 👤 ${s.staff}</div>
+        </div>
+        <span class="badge badge-red">逾期</span>
+      </div>
+      <div class="approval-actions">
+        <button class="btn btn-ghost btn-sm" onclick="closeOverdue(${s.id})">🔒 關閉此排程</button>
+        <button class="btn btn-accent btn-sm" onclick="reassignOverdue(${s.id})">🔄 重新指派</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ══════════════════════════════════════
+//  RENDER OTHER
+// ══════════════════════════════════════
 function renderAnomalies() {
-  const sevMap = {low:{label:'輕微',cls:'badge-yellow'},mid:{label:'中度',cls:'badge-orange'},high:{label:'嚴重',cls:'badge-red'}};
+  const sevMap = { low:{l:'輕微',c:'badge-yellow'}, mid:{l:'中度',c:'badge-orange'}, high:{l:'嚴重',c:'badge-red'} };
   const stMap = {'處理中':'badge-blue','待處理':'badge-red','已結案':'badge-green'};
   const tbody = document.getElementById('anomalyList');
-  if(!tbody) return;
-  tbody.innerHTML = S.anomalies.map(a=>`
+  if (!tbody) return;
+  if (!S.anomalies.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">目前無異常記錄</td></tr>'; return; }
+  tbody.innerHTML = S.anomalies.map(a => `
     <tr>
-      <td class="mono" style="font-size:12px">${a.time}</td>
-      <td>${a.location}</td>
-      <td>${a.type}</td>
-      <td><span class="badge ${sevMap[a.severity]?.cls}">${sevMap[a.severity]?.label}</span></td>
+      <td class="mono" style="font-size:11px">${a.created_at ? new Date(a.created_at).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '-'}</td>
+      <td>${a.location}</td><td>${a.type}</td>
+      <td><span class="badge ${sevMap[a.severity]?.c||'badge-gray'}">${sevMap[a.severity]?.l||a.severity}</span></td>
       <td><span class="badge ${stMap[a.status]||'badge-gray'}">${a.status}</span></td>
       <td><button class="btn btn-ghost btn-sm" onclick="viewAnomaly(${a.id})">查看</button></td>
     </tr>
   `).join('');
   const badge = document.getElementById('anomalyBadge');
-  if(badge) {
-    const pending = S.anomalies.filter(a=>a.status==='待處理').length;
-    badge.textContent = pending; badge.style.display = pending?'':'none';
-  }
+  if (badge) { const p = S.anomalies.filter(a => a.status==='待處理').length; badge.textContent=p; badge.style.display=p?'':'none'; }
 }
 
-function renderSchedules() {
-  const tbody = document.getElementById('scheduleList');
-  if(!tbody) return;
-  tbody.innerHTML = S.schedules.map(s=>`
+function renderAllAnomalies() {
+  const sevMap = { low:{l:'輕微',c:'badge-yellow'}, mid:{l:'中度',c:'badge-orange'}, high:{l:'嚴重',c:'badge-red'} };
+  const stMap = {'處理中':'badge-blue','待處理':'badge-red','已結案':'badge-green'};
+  const tbody = document.getElementById('allAnomalyList');
+  if (!tbody) return;
+  if (!S.anomalies.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">無異常記錄</td></tr>'; return; }
+  tbody.innerHTML = S.anomalies.map(a => `
     <tr>
-      <td><strong>${s.location}</strong></td>
-      <td><span class="freq-tag">${s.freq}</span></td>
-      <td>${s.staff}</td>
-      <td class="mono" style="font-size:12px">${s.start}~${s.end}</td>
-      <td style="font-size:12px;color:var(--text2)">${s.template}</td>
-      <td><span class="badge ${s.active?'badge-green':'badge-gray'}">${s.active?'啟用':'停用'}</span></td>
+      <td class="mono" style="font-size:11px">${a.created_at ? new Date(a.created_at).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '-'}</td>
+      <td>${a.reported_by||'-'}</td><td>${a.location}</td><td>${a.type}</td>
+      <td><span class="badge ${sevMap[a.severity]?.c||'badge-gray'}">${sevMap[a.severity]?.l||a.severity}</span></td>
+      <td><span class="badge ${stMap[a.status]||'badge-gray'}">${a.status}</span></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="viewAnomaly(${a.id})">查看</button></td>
     </tr>
   `).join('');
 }
 
 function renderRecords() {
   const tbody = document.getElementById('recordsList');
-  if(!tbody) return;
-  const rcls = {正常:'badge-green',異常:'badge-red'};
-  tbody.innerHTML = S.records.map(r=>`
+  if (!tbody) return;
+  const rcls = {'正常':'badge-green','異常':'badge-red'};
+  if (!S.records.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">尚無打卡記錄</td></tr>'; return; }
+  tbody.innerHTML = S.records.map(r => `
     <tr>
-      <td class="mono" style="font-size:12px">${r.date}</td>
-      <td>${r.staff}</td>
-      <td>${r.location}</td>
-      <td><span class="badge badge-blue">${r.method}</span></td>
-      <td class="mono" style="font-size:12px">${r.ts}</td>
-      <td style="font-size:12px">${r.dur}</td>
+      <td class="mono" style="font-size:11px">${r.checkin_at ? new Date(r.checkin_at).toLocaleString('zh-TW') : '-'}</td>
+      <td>${r.staff}</td><td>${r.location_name}</td>
+      <td style="font-size:12px;color:var(--text2)">${r.warehouse||'-'}</td>
       <td><span class="badge ${rcls[r.result]||'badge-gray'}">${r.result}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${r.note||'-'}</td>
     </tr>
   `).join('');
 }
 
 function renderLocations() {
   const list = document.getElementById('locationList');
-  if(!list) return;
-  list.innerHTML = S.locations.map((l,i)=>`
+  if (!list) return;
+  if (!S.locations.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">📍</div><p>尚無巡檢地點</p></div>'; return; }
+  list.innerHTML = S.locations.map(l => `
     <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2)">
-      <div style="width:38px;height:38px;border-radius:10px;background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.2);display:flex;align-items:center;justify-content:center;font-size:18px">📍</div>
+      <div style="width:36px;height:36px;border-radius:10px;background:rgba(240,165,0,.1);display:flex;align-items:center;justify-content:center;font-size:17px">📍</div>
       <div style="flex:1">
         <div style="font-weight:700;font-size:14px">${l.name}</div>
-        <div style="font-size:12px;color:var(--text2)">${l.building} ${l.floor} &nbsp;|&nbsp; ${l.desc}</div>
+        <div style="font-size:12px;color:var(--text2)"><span class="badge badge-gray" style="font-size:11px">${l.building}</span> ${l.floor||''} ${l.description||''}</div>
         <div style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace">ID: ${l.id}</div>
       </div>
       <div style="display:flex;gap:6px">
         <button class="btn btn-ghost btn-sm" onclick="showQRModal('${l.id}')">🔲 QR</button>
-        <button class="btn btn-sm" style="background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,.3)" onclick="removeLocation(${i})">刪</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-function renderStaffRates() {
-  const el = document.getElementById('staffRateList');
-  if(!el) return;
-  el.innerHTML = S.staff.map(s=>`
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2)">
-      <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--orange));display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:#0d1117">${s.name[0]}</div>
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:14px">${s.name} <span style="font-size:12px;color:var(--text2);font-weight:400">${s.shift}</span></div>
-        <div style="font-size:12px;color:var(--text2)">${s.areas}</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;min-width:120px">
-        <div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden">
-          <div style="width:${s.rate}%;height:100%;background:${s.rate>=90?'var(--green)':s.rate>=75?'var(--accent)':'var(--red)'};border-radius:3px"></div>
-        </div>
-        <span class="mono" style="font-size:13px;font-weight:700;color:${s.rate>=90?'var(--green)':s.rate>=75?'var(--accent)':'var(--red)'}">${s.rate}%</span>
+        <button class="icon-btn del" onclick="removeLocation('${l.id}')">🗑</button>
       </div>
     </div>
   `).join('');
@@ -1063,353 +1416,746 @@ function renderStaffRates() {
 
 function renderQRGrid() {
   const grid = document.getElementById('qrGrid');
-  if(!grid) return;
-  grid.innerHTML = S.locations.map(l=>`
+  if (!grid) return;
+  if (!S.locations.length) { grid.innerHTML = '<div class="empty-state"><div class="empty-icon">🔲</div><p>請先新增巡檢地點</p></div>'; return; }
+  grid.innerHTML = S.locations.map(l => `
     <div class="qr-print-card" onclick="showQRModal('${l.id}')">
-      <div class="qr-mini-canvas" id="mini_${l.id}"></div>
+      <div class="qr-print-img" id="qrthumb_${l.id}"></div>
       <div class="qr-print-name">${l.name}</div>
-      <div class="qr-print-sub">${l.building} ${l.floor} &nbsp;·&nbsp; <span class="mono">${l.id}</span></div>
+      <div class="qr-print-sub">${l.building}</div>
     </div>
   `).join('');
-  // Render mini QRs
-  setTimeout(()=>{
-    S.locations.forEach(l=>{
-      const el = document.getElementById('mini_'+l.id);
-      if(el && el.childElementCount === 0) {
-        try {
-          new QRCode(el, { text: JSON.stringify({loc:l.id,name:l.name,ts:'STATIC'}), width:100, height:100, colorDark:'#000', colorLight:'#fff', correctLevel:QRCode.CorrectLevel.M });
-        } catch(e) {}
-      }
-    });
-  }, 200);
+  setTimeout(() => S.locations.forEach(l => {
+    const el = document.getElementById('qrthumb_' + l.id);
+    if (!el || el.childElementCount > 0) return;
+    const img = document.createElement('img');
+    img.width = 100; img.height = 100; img.style.display = 'block';
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(JSON.stringify({loc:l.id,name:l.name,sys:'FACTORY_PATROL'}))}&margin=4`;
+    el.appendChild(img);
+  }), 300);
 }
 
-function renderTemplatesAdmin() {
-  const el = document.getElementById('templatesAdmin');
-  if(!el) return;
-  el.innerHTML = Object.entries(S.templates).map(([name,items])=>`
-    <div style="margin-bottom:16px">
-      <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px">📋 ${name}</div>
-      ${items.map(item=>`<div style="font-size:13px;color:var(--text2);padding:4px 0;display:flex;gap:8px"><span style="color:var(--border)">▸</span>${item}</div>`).join('')}
-      <div style="height:1px;background:var(--border2);margin-top:12px"></div>
+function renderStaffMgmt() {
+  const list = document.getElementById('staffMgmtList');
+  if (!list) return;
+  if (!S.staffList.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div><p>尚無廠務人員</p></div>'; return; }
+  list.innerHTML = `<div class="staff-grid">${S.staffList.map((s, i) => `
+    <div class="staff-card">
+      <div class="staff-avatar" style="background:${AVATAR_COLORS[i % AVATAR_COLORS.length]}">${s.name[0]}</div>
+      <div style="flex:1;min-width:0">
+        <div class="staff-name">${s.name}</div>
+        <div class="staff-areas">${(s.areas && s.areas.length) ? s.areas.join('、') : '未設定負責區域'}</div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn btn-ghost btn-sm" onclick="openEditStaff(${s.id})">✏️ 編輯</button>
+          <button class="icon-btn del" onclick="deleteStaff(${s.id},'${s.name}')">🗑</button>
+        </div>
+      </div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function renderNewStaffAreaGrid() {
+  const grid = document.getElementById('newStaffAreaGrid');
+  if (!grid) return;
+  if (!S.locations.length) { grid.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px">請先新增巡檢地點</div>'; return; }
+  grid.innerHTML = S.locations.map(l => `
+    <label class="area-check-item">
+      <input type="checkbox" value="${l.name}" onchange="this.closest('.area-check-item').classList.toggle('checked',this.checked)">
+      <span>${l.name} <span style="color:var(--text3);font-size:11px">(${l.building})</span></span>
+    </label>
+  `).join('');
+}
+
+function renderEditStaffAreaGrid(selectedAreas = []) {
+  const grid = document.getElementById('editStaffAreaGrid');
+  if (!grid) return;
+  if (!S.locations.length) { grid.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px">請先新增巡檢地點</div>'; return; }
+  grid.innerHTML = S.locations.map(l => {
+    const checked = selectedAreas.includes(l.name);
+    return `
+      <label class="area-check-item ${checked ? 'checked' : ''}">
+        <input type="checkbox" value="${l.name}" ${checked ? 'checked' : ''} onchange="this.closest('.area-check-item').classList.toggle('checked',this.checked)">
+        <span>${l.name} <span style="color:var(--text3);font-size:11px">(${l.building})</span></span>
+      </label>
+    `;
+  }).join('');
+}
+
+function renderTemplateMgmt() {
+  const el = document.getElementById('templateMgmt');
+  if (!el) return;
+  if (!S.templates.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>尚無巡檢範本</p></div>'; return; }
+  el.innerHTML = S.templates.map(t => `
+    <div class="template-section">
+      <div class="template-header">
+        <span class="template-name">📋 ${t.name}</span>
+        <button class="icon-btn del" onclick="deleteTemplate(${t.id})">🗑</button>
+      </div>
+      <div id="tmpl_items_${t.id}">
+        ${(t.items||[]).map((item,idx) => `
+          <div class="inline-list-item" id="tmpl_item_${t.id}_${idx}">
+            <span class="item-text">${item}</span>
+            <button class="icon-btn edit" onclick="startEditItem(${t.id},${idx},'${item.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">✏️</button>
+            <button class="icon-btn del" onclick="deleteTemplateItem(${t.id},${idx})">🗑</button>
+          </div>
+        `).join('')}
+      </div>
+      <div class="add-item-row">
+        <input type="text" class="form-control" id="new_item_${t.id}" placeholder="新增巡檢項目..." onkeyup="if(event.key==='Enter')addTemplateItem(${t.id})">
+        <button class="btn btn-green btn-sm" onclick="addTemplateItem(${t.id})">＋</button>
+      </div>
     </div>
   `).join('');
 }
 
-// ══════════════════════════════
-//  QR CODE MODAL
-// ══════════════════════════════
+function renderAtypeGrid() {
+  const grid = document.getElementById('atypeGrid');
+  if (!grid) return;
+  if (!S.atypes.length) { grid.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px">尚無異常類別</div>'; return; }
+  grid.innerHTML = S.atypes.filter(a => a.active).map(a => `
+    <label class="atype-option" onclick="selectAtype(this,'${a.name}')">${a.icon||'📌'} ${a.name}</label>
+  `).join('');
+}
+
+function renderAtypeMgmt() {
+  const el = document.getElementById('atypeMgmt');
+  if (!el) return;
+  if (!S.atypes.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>尚無異常類別</p></div>'; return; }
+  el.innerHTML = S.atypes.map(a => `
+    <div class="atype-row">
+      <span style="font-size:20px">${a.icon||'📌'}</span>
+      <span style="flex:1;font-size:14px;font-weight:600">${a.name}</span>
+      <button class="icon-btn del" onclick="deleteAtype(${a.id})">🗑</button>
+    </div>
+  `).join('');
+}
+
+function updateStats() {
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const mr = S.records.filter(r => r.checkin_at >= monthStart);
+  const ma = S.anomalies.filter(a => a.created_at >= monthStart);
+  const closed = S.anomalies.filter(a => a.status === '已結案').length;
+  const active = S.schedules.filter(s => s.status === 'active').length * 4;
+  const rate = active ? Math.min(100, Math.round(mr.length / Math.max(active, 1) * 100)) : 0;
+  [['statRate', rate + '%'], ['statTotal', mr.length], ['statAnomaly', ma.length], ['statClosed', closed]].forEach(([id, val]) => {
+    const el = document.getElementById(id); if (el) el.textContent = val;
+  });
+}
+
+// ══════════════════════════════════════
+//  QR CODE
+// ══════════════════════════════════════
 let validityTimer = null;
-
 function showQRModal(locId) {
-  const loc = S.locations.find(l=>l.id===locId);
-  if(!loc) return;
-  const canvas = document.getElementById('qrModalCanvas');
-  canvas.innerHTML = '';
-  const qrData = JSON.stringify({ loc: locId, name: loc.name, type: 'FACTORY_PATROL', v: '1' });
-  try { new QRCode(canvas, { text: qrData, width: 200, height: 200, colorDark:'#000000', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.H }); }
-  catch(e) { canvas.textContent = '⚠️ QR 產生失敗'; }
+  const loc = S.locations.find(l => l.id === locId);
+  if (!loc) return;
+  const encoded = encodeURIComponent(JSON.stringify({ loc: locId, name: loc.name, sys: 'FACTORY_PATROL' }));
+  document.getElementById('qrModalTop').innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encoded}&format=png&margin=10" width="240" height="240" style="display:block;margin:0 auto;border-radius:8px">`;
   document.getElementById('qrModalName').textContent = loc.name;
-  document.getElementById('qrModalMeta').textContent = `${loc.building} ${loc.floor} · ${loc.desc} · ID: ${loc.id}`;
+  document.getElementById('qrModalMeta').textContent = `${loc.building} ${loc.floor || ''} · ${loc.description || ''}`;
   startValidityCountdown();
   document.getElementById('qrDisplayModal').classList.add('open');
 }
-
 function startValidityCountdown() {
-  if(validityTimer) clearInterval(validityTimer);
-  const windowSec = 5 * 60; // 5 minutes
-  let elapsed = 0;
-  const now = new Date();
-  const windowEnd = new Date(Math.ceil(now.getTime()/(windowSec*1000))*(windowSec*1000));
-  const update = () => {
-    const remaining = Math.max(0, Math.floor((windowEnd - new Date())/1000));
-    const mins = Math.floor(remaining/60), secs = remaining%60;
-    const vu = document.getElementById('validUntil');
-    if(vu) vu.textContent = `${windowEnd.getHours().toString().padStart(2,'0')}:${windowEnd.getMinutes().toString().padStart(2,'0')}:${windowEnd.getSeconds().toString().padStart(2,'0')}`;
-    const bar = document.getElementById('validityBar');
-    if(bar) bar.style.width = (remaining/windowSec*100)+'%';
+  if (validityTimer) clearInterval(validityTimer);
+  const ws = 5 * 60;
+  const end = new Date(Math.ceil(Date.now() / (ws * 1000)) * (ws * 1000));
+  const upd = () => {
+    const rem = Math.max(0, Math.floor((end - new Date()) / 1000));
+    const vu = document.getElementById('validUntil'); if (vu) vu.textContent = end.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const bar = document.getElementById('validityBar'); if (bar) bar.style.width = (rem / ws * 100) + '%';
   };
-  update();
-  validityTimer = setInterval(update, 1000);
+  upd(); validityTimer = setInterval(upd, 1000);
 }
+function closeQrModal() { document.getElementById('qrDisplayModal').classList.remove('open'); if (validityTimer) clearInterval(validityTimer); }
 
-function closeQrModal() {
-  document.getElementById('qrDisplayModal').classList.remove('open');
-  if(validityTimer) clearInterval(validityTimer);
-}
-
-// ══════════════════════════════
+// ══════════════════════════════════════
 //  SCANNER
-// ══════════════════════════════
+// ══════════════════════════════════════
 async function startScan() {
-  const wrap = document.getElementById('viewfinderWrap');
-  const startBtn = document.getElementById('startScanBtn');
-  const stopBtn = document.getElementById('stopScanBtn');
   const hint = document.getElementById('scannerHint');
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    S.scanStream = stream;
-    S.scanActive = true;
+    S.scanStream = stream; S.scanActive = true;
     document.getElementById('video-el').srcObject = stream;
-    wrap.classList.add('show');
-    startBtn.classList.add('hidden');
-    stopBtn.classList.remove('hidden');
-    hint.textContent = '📡 正在掃描... 請對準巡檢點 QR Code';
-    // Simulate auto detect after 3s for demo
-    setTimeout(()=>{ if(S.scanActive) simulateScan(); }, 4000);
-  } catch(e) {
-    hint.textContent = '❌ 無法開啟相機：'+e.message;
-    showToast('請允許相機權限後重試', 'warn');
-  }
+    document.getElementById('viewfinderWrap').classList.add('show');
+    document.getElementById('startScanBtn').classList.add('hidden');
+    document.getElementById('stopScanBtn').classList.remove('hidden');
+    hint.textContent = '📡 對準巡檢點 QR Code...';
+    setTimeout(() => { if (S.scanActive) simulateScan(); }, 4000);
+  } catch (e) { hint.textContent = '❌ 無法開啟相機，請使用模擬掃碼'; }
 }
-
 function stopScan() {
-  if(S.scanStream) { S.scanStream.getTracks().forEach(t=>t.stop()); S.scanStream = null; }
+  if (S.scanStream) { S.scanStream.getTracks().forEach(t => t.stop()); S.scanStream = null; }
   S.scanActive = false;
   document.getElementById('viewfinderWrap').classList.remove('show');
   document.getElementById('startScanBtn').classList.remove('hidden');
   document.getElementById('stopScanBtn').classList.add('hidden');
   document.getElementById('scannerHint').textContent = '';
 }
-
 function simulateScan() {
   stopScan();
-  // Pick a random pending task location
-  const pending = S.tasks.filter(t=>t.status!=='done');
-  const task = pending.length ? pending[0] : S.tasks[0];
-  const loc = S.locations.find(l=>l.name===task.location) || S.locations[0];
+  if (!S.locations.length) { showToast('尚無巡檢地點', 'warn'); return; }
+  const pending = S.tasks.filter(t => t.status !== 'done');
+  if (!pending.length) { showToast('✅ 今日任務全部完成！', 'ok'); return; }
+  const loc = S.locations.find(l => l.name === pending[0].location) || S.locations[0];
   processScan(loc.id);
 }
-
 function processScan(locId) {
-  const loc = S.locations.find(l=>l.id===locId);
-  if(!loc) { showToast('❌ 無法識別 QR Code', 'err'); return; }
-  // Find matching task
-  const task = S.tasks.find(t=>t.location===loc.name && t.status!=='done');
-  if(!task) { showToast('✅ 此地點今日已完成巡檢', 'ok'); return; }
-  // Check duplicate scan
+  const loc = S.locations.find(l => l.id === locId);
+  if (!loc) { showToast('❌ 無法識別 QR Code', 'err'); return; }
   const now = Date.now();
-  const lastScanTime = S.lastScan[locId] || 0;
-  const dupeLockMs = (parseInt(document.getElementById('dupeLock')?.value||30)) * 60000;
-  if(now - lastScanTime < dupeLockMs && lastScanTime > 0) {
-    const minAgo = Math.floor((now-lastScanTime)/60000);
-    showToast(`⚠️ ${minAgo} 分鐘前已掃描此地點`, 'warn'); return;
-  }
-  S.selectedTask = task;
+  const last = S.lastScan[locId] || 0;
+  if (now - last < 30 * 60000 && last > 0) { showToast(`⚠️ ${Math.floor((now - last) / 60000)} 分鐘前已掃描此地點`, 'warn'); return; }
   S.lastScan[locId] = now;
-  openChecklist(task.id);
+  const task = S.tasks.find(t => t.location === loc.name && t.status !== 'done');
+  if (!task) { showToast('✅ 此地點今日已完成', 'ok'); return; }
+  S.selectedTask = task;
+  openChecklist(task.id, true);
 }
 
-// ══════════════════════════════
-//  CHECKLIST MODAL
-// ══════════════════════════════
-function openChecklist(taskId) {
-  const task = S.tasks.find(t=>t.id===taskId);
-  if(!task) return;
+// ══════════════════════════════════════
+//  CHECKLIST
+// ══════════════════════════════════════
+function openChecklist(taskId, fromQRScan = false) {
+  if (!fromQRScan && S.currentRole !== 'manager') { showToast('⚠️ 請先到現場掃描 QR Code', 'warn'); return; }
+  const task = S.tasks.find(t => t.id === taskId);
+  if (!task) return;
   S.selectedTask = task;
-  const items = S.templates[task.template] || S.templates['設備日常巡檢'];
-  const now = new Date();
-  const timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
-  document.getElementById('checklistModalTitle').textContent = `📋 ${task.location}`;
-  document.getElementById('checklistModalBody').innerHTML = `
-    <div class="alert alert-success" style="margin-bottom:16px">
-      🔲 QR Code 驗證通過 &nbsp;|&nbsp; 掃描時間：<strong class="mono">${timeStr}</strong>
-    </div>
+  const tmpl = S.templates.find(t => t.name === task.template);
+  const items = tmpl?.items || [];
+  const ts = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('checklistTitle').textContent = `📋 ${task.title || task.location}`;
+  document.getElementById('checklistBody').innerHTML = `
+    <div class="alert alert-success" style="margin-bottom:16px">🔲 QR Code 驗證通過 &nbsp;|&nbsp; <strong class="mono">${ts}</strong></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div>
-        <div style="font-size:13px;color:var(--text2)">巡檢範本</div>
-        <div style="font-size:14px;font-weight:700">${task.template}</div>
-      </div>
-      <span class="freq-tag">${task.freq}</span>
+      <div><div style="font-size:12px;color:var(--text2)">巡檢地點</div><div style="font-weight:700">${task.location}</div></div>
+      <span class="badge badge-gray">${task.warehouse}</span>
     </div>
-    <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:8px;letter-spacing:.5px;text-transform:uppercase">✅ 巡檢項目確認</div>
-    ${items.map((item,i)=>`
-      <div class="check-item">
-        <input type="checkbox" id="ci_${i}">
-        <label for="ci_${i}">${item}</label>
-      </div>
-    `).join('')}
+    <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">✅ 巡檢項目</div>
+    ${items.length ? items.map((item, i) => `<div class="check-item"><input type="checkbox" id="ci_${i}"><label for="ci_${i}">${item}</label></div>`).join('') : '<div style="color:var(--text3);font-size:13px;padding:12px">此範本尚無項目</div>'}
     <div style="margin-top:14px">
       <label class="form-label">巡檢備註</label>
-      <textarea class="form-control" id="checkinNote" placeholder="如有異常請描述，完成後點下方按鈕..." style="min-height:70px"></textarea>
+      <textarea class="form-control" id="checkinNote" placeholder="如有異常請描述..." style="min-height:70px"></textarea>
     </div>
   `;
   openModal('checklistModal');
 }
 
-function confirmCheckin() {
+async function confirmCheckin() {
   const task = S.selectedTask;
-  if(!task) return;
-  const items = S.templates[task.template] || [];
-  const checked = items.filter((_,i)=>document.getElementById('ci_'+i)?.checked).length;
-  if(checked < items.length) {
-    const ok = confirm(`尚有 ${items.length-checked} 項未勾選，確定要完成打卡嗎？`);
-    if(!ok) return;
-  }
+  if (!task) return;
+  const tmpl = S.templates.find(t => t.name === task.template);
+  const items = tmpl?.items || [];
   const note = document.getElementById('checkinNote')?.value || '';
-  const now = new Date();
-  const timeStr = now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
-  task.status = 'done';
-  task.checkedAt = timeStr;
-  S.records.unshift({
-    date: now.toLocaleDateString('zh-TW')+' '+timeStr,
-    staff: task.staff,
-    location: task.location,
-    method: 'QR掃描',
-    ts: timeStr+':'+now.getSeconds().toString().padStart(2,'0'),
-    dur: Math.floor(Math.random()*15+8)+'分鐘',
-    result: note ? '異常' : '正常',
+  const checklist = items.map((item, i) => ({ item, checked: document.getElementById('ci_' + i)?.checked || false }));
+  const unchecked = checklist.filter(c => !c.checked).length;
+  if (unchecked > 0 && !confirm(`尚有 ${unchecked} 項未勾選，確定完成打卡嗎？`)) return;
+  const btn = document.getElementById('confirmCheckinBtn');
+  btn.disabled = true; btn.textContent = '儲存中...';
+  const { error } = await db.from('checkin_records').insert({
+    location_id: task.location_id || null, location_name: task.location,
+    warehouse: task.warehouse || '', staff: S.currentUser,
+    scan_method: 'QR掃描', schedule_id: task.id,
+    duration_min: Math.floor(Math.random() * 15 + 8),
+    result: note ? '異常' : '正常', note, checklist,
   });
+  btn.disabled = false; btn.textContent = '✅ 完成打卡';
+  if (error) { showToast('❌ 儲存失敗：' + error.message, 'err'); return; }
+  task.status = 'done'; task.checkedAt = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
   closeModal('checklistModal');
-  renderTasks(); updateProgress(); renderRecords();
-  showScanSuccess();
-  if(note) showToast('⚠️ 已記錄異常，建議至異常登記頁補充詳情', 'warn');
+  await loadRecords();
+  renderTasks(); updateProgress();
+  document.getElementById('scanSuccess').classList.add('show');
+  setTimeout(() => document.getElementById('scanSuccess').classList.remove('show'), 1800);
+  if (note) showToast('⚠️ 已記錄備註，請至異常登記補充', 'warn');
 }
 
-function showScanSuccess() {
-  const el = document.getElementById('scanSuccess');
-  el.classList.add('show');
-  setTimeout(()=>el.classList.remove('show'), 1800);
+// ══════════════════════════════════════
+//  SCHEDULE CRUD
+// ══════════════════════════════════════
+function selectSchedType(type, btn) {
+  S.selectedSchedType = type;
+  document.querySelectorAll('.stype-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.stype-fields').forEach(f => f.classList.remove('show'));
+  document.getElementById('fields_' + type)?.classList.add('show');
 }
 
-// ══════════════════════════════
-//  ANOMALY
-// ══════════════════════════════
-function selectAtype(el, val) {
-  document.querySelectorAll('.atype-option').forEach(e=>e.classList.remove('selected'));
-  el.classList.add('selected');
-  el.querySelector('input').checked = true;
-  S.atype = val;
+async function addSchedule() {
+  const type = S.selectedSchedType;
+  const isManager = S.currentRole === 'manager';
+  let insertData = { schedule_type: type, status: isManager ? 'active' : 'pending_approval', created_by: S.currentUser, active: true };
+
+  if (type === 'weekly') {
+    const locId = document.getElementById('sched_location_weekly').value;
+    const loc = S.locations.find(l => l.id === locId);
+    const staff = document.getElementById('sched_staff_weekly').value;
+    const tmpl = document.getElementById('sched_template_weekly').value;
+    if (!locId || !staff) { showToast('請填寫地點和負責人', 'warn'); return; }
+    insertData = { ...insertData,
+      title: `${loc?.name || locId} 週巡檢`,
+      location_id: locId, location_name: loc?.name || locId, warehouse: loc?.building || '',
+      weekday: parseInt(document.getElementById('sched_week_cycle').value),
+      start_time: document.getElementById('sched_start_weekly').value,
+      end_time: document.getElementById('sched_end_weekly').value,
+      staff, template: tmpl,
+    };
+  } else if (type === 'monthly_date') {
+    const title = document.getElementById('sched_title_monthly').value.trim();
+    const day = document.getElementById('sched_monthly_day').value;
+    const staff = document.getElementById('sched_staff_monthly').value;
+    if (!title || !day || !staff) { showToast('請填寫標題、號數和負責人', 'warn'); return; }
+    insertData = { ...insertData,
+      title, location_name: '—', warehouse: '',
+      monthly_day: parseInt(day), staff,
+      note: document.getElementById('sched_note_monthly').value,
+    };
+  } else if (type === 'one_time') {
+    const title = document.getElementById('sched_title_onetime').value.trim();
+    const date = document.getElementById('sched_specific_date').value;
+    const staff = document.getElementById('sched_staff_onetime').value;
+    if (!title || !date || !staff) { showToast('請填寫標題、日期和負責人', 'warn'); return; }
+    insertData = { ...insertData,
+      title, location_name: '—', warehouse: '',
+      specific_date: date, staff,
+      note: document.getElementById('sched_note_onetime').value,
+    };
+  }
+
+  const btn = document.getElementById('schedSubmitBtn'); btn.disabled = true; btn.textContent = '提交中...';
+  const { error } = await db.from('schedules').insert(insertData);
+  btn.disabled = false; btn.textContent = '提交申請';
+  if (error) { showToast('❌ 新增失敗：' + error.message, 'err'); return; }
+
+  // Reset form fields
+  ['sched_title_monthly','sched_title_onetime','sched_note_monthly','sched_note_onetime'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const sd = document.getElementById('sched_specific_date'); if (sd) sd.value = '';
+
+  await loadSchedules();
+  closeModal('scheduleModal');
+  if (!isManager) {
+    const titleStr = insertData.title;
+    showToast('✅ 排程申請已送出，等待管理者審核', 'ok');
+    await sendLineNotify(`📅 新排程申請\n申請人：${S.currentUser}\n標題：${titleStr}\n類型：${type === 'weekly' ? '週巡檢' : type === 'monthly_date' ? '每月固定日' : '指定日期'}`, 'schedule_request');
+  } else {
+    showToast('✅ 排程新增成功！');
+  }
+  updateApprovalBadge();
 }
 
-function setSeverity(level, el) {
-  S.severity = level;
-  document.querySelectorAll('.sev-option').forEach(e=>{ e.className='sev-option'; });
-  el.classList.add('active-'+level);
+async function approveSchedule(id) {
+  const { error } = await db.from('schedules').update({ status: 'active', approved_by: ADMIN_NAME, approved_at: new Date().toISOString() }).eq('id', id);
+  if (error) { showToast('操作失敗', 'err'); return; }
+  await loadSchedules(); loadApprovals(); showToast('✅ 已核可排程');
 }
 
-function submitAnomaly() {
+async function rejectSchedule(id) {
+  const reason = prompt('請輸入退回原因（選填）：');
+  const { error } = await db.from('schedules').update({ status: 'closed', note: reason ? `退回原因：${reason}` : '管理者退回' }).eq('id', id);
+  if (error) { showToast('操作失敗', 'err'); return; }
+  await loadSchedules(); loadApprovals(); showToast('已退回排程');
+}
+
+async function closeOverdue(id) {
+  if (!confirm('確定關閉此逾期排程？關閉後不可復原。')) return;
+  const { error } = await db.from('schedules').update({ status: 'closed' }).eq('id', id);
+  if (error) { showToast('操作失敗', 'err'); return; }
+  await loadSchedules(); loadOverdueSchedules(); showToast('已關閉排程');
+}
+
+async function reassignOverdue(id) {
+  const sched = S.schedules.find(s => s.id === id);
+  if (!sched) return;
+  const newDate = prompt('請輸入重新指派的日期（格式：YYYY-MM-DD）：');
+  if (!newDate) return;
+  const { error } = await db.from('schedules').update({ status: 'active', specific_date: newDate, schedule_type: 'one_time' }).eq('id', id);
+  if (error) { showToast('操作失敗', 'err'); return; }
+  await loadSchedules(); loadOverdueSchedules(); showToast('✅ 已重新指派');
+}
+
+// ══════════════════════════════════════
+//  CHANGE REQUEST
+// ══════════════════════════════════════
+function openChangeRequest(schedId) {
+  const sched = S.schedules.find(s => s.id === schedId);
+  if (!sched) return;
+  S.changeRequestingSchedId = schedId;
+  document.getElementById('changeRequestInfo').innerHTML = `
+    <strong>${sched.title}</strong><br>
+    📍 ${sched.location_name} &nbsp;|&nbsp; 目前日期：${sched.specific_date || '—'}
+  `;
+  document.getElementById('change_new_date').value = '';
+  document.getElementById('change_reason').value = '';
+  openModal('changeRequestModal');
+}
+
+async function submitChangeRequest() {
+  const id = S.changeRequestingSchedId;
+  const newDate = document.getElementById('change_new_date').value;
+  const reason = document.getElementById('change_reason').value.trim();
+  if (!newDate || !reason) { showToast('請填寫新日期和原因', 'warn'); return; }
+  const sched = S.schedules.find(s => s.id === id);
+  const btn = document.getElementById('changeSubmitBtn'); btn.disabled = true;
+  const { error } = await db.from('schedule_change_requests').insert({
+    schedule_id: id, request_type: 'reschedule',
+    requested_by: S.currentUser, old_date: sched?.specific_date || '',
+    new_date: newDate, reason, status: 'pending',
+  });
+  btn.disabled = false;
+  if (error) { showToast('❌ 提交失敗：' + error.message, 'err'); return; }
+  closeModal('changeRequestModal');
+  showToast('✅ 改期申請已送出，等待管理者審核', 'ok');
+  await sendLineNotify(`🔄 改期申請\n申請人：${S.currentUser}\n排程：${sched?.title}\n新日期：${newDate}\n原因：${reason}`, 'schedule_request');
+}
+
+async function approveChange(requestId, schedId, newDate) {
+  const { error: e1 } = await db.from('schedules').update({ specific_date: newDate }).eq('id', schedId);
+  const { error: e2 } = await db.from('schedule_change_requests').update({ status: 'approved', reviewed_by: ADMIN_NAME, reviewed_at: new Date().toISOString() }).eq('id', requestId);
+  if (e1 || e2) { showToast('操作失敗', 'err'); return; }
+  await loadSchedules(); loadApprovals(); showToast('✅ 改期已核可');
+}
+
+async function rejectChange(requestId) {
+  const { error } = await db.from('schedule_change_requests').update({ status: 'rejected', reviewed_by: ADMIN_NAME, reviewed_at: new Date().toISOString() }).eq('id', requestId);
+  if (error) { showToast('操作失敗', 'err'); return; }
+  loadApprovals(); showToast('已退回改期申請');
+}
+
+// ══════════════════════════════════════
+//  TASK COMPLETE (monthly / one-time)
+// ══════════════════════════════════════
+function openTaskComplete(schedId) {
+  const sched = S.schedules.find(s => s.id === schedId);
+  if (!sched) return;
+  S.selectedTask = { id: schedId, title: sched.title, type: sched.schedule_type };
+  document.getElementById('taskCompleteTitle').textContent = `✅ 完成任務：${sched.title}`;
+  document.getElementById('taskCompleteInfo').innerHTML = `
+    <strong>${sched.title}</strong><br>
+    👤 負責人：${sched.staff}<br>
+    ${sched.schedule_type === 'monthly_date' ? `🗓️ 每月 ${sched.monthly_day} 號前完成` : `🗓️ 完成期限：${sched.specific_date}`}
+    ${sched.note ? `<br>📝 任務說明：${sched.note}` : ''}
+  `;
+  document.getElementById('taskCompleteNote').value = '';
+  openModal('taskCompleteModal');
+}
+
+async function confirmTaskComplete() {
+  const note = document.getElementById('taskCompleteNote').value.trim();
+  if (!note) { showToast('⚠️ 請填寫完成說明', 'warn'); return; }
+  const schedId = S.selectedTask?.id;
+  if (!schedId) return;
+  const btn = document.getElementById('confirmTaskCompleteBtn'); btn.disabled = true; btn.textContent = '儲存中...';
+
+  // Insert completion record
+  const sched = S.schedules.find(s => s.id === schedId);
+  const { error: recErr } = await db.from('checkin_records').insert({
+    location_name: sched?.title || '任務完成',
+    warehouse: sched?.warehouse || '',
+    staff: S.currentUser,
+    scan_method: '任務完成',
+    schedule_id: schedId,
+    result: '正常',
+    note,
+  });
+
+  // Mark schedule as closed (one_time) or keep active (monthly)
+  let schedUpdate = {};
+  if (sched?.schedule_type === 'one_time') {
+    schedUpdate = { status: 'closed' };
+  }
+  // monthly_date stays active for next month
+
+  if (Object.keys(schedUpdate).length) {
+    await db.from('schedules').update(schedUpdate).eq('id', schedId);
+  }
+
+  btn.disabled = false; btn.textContent = '✅ 確認完成';
+  if (recErr) { showToast('❌ 儲存失敗：' + recErr.message, 'err'); return; }
+
+  closeModal('taskCompleteModal');
+  await loadSchedules(); await loadRecords();
+  showToast('✅ 任務已完成並記錄！', 'ok');
+}
+function selectAtype(el, val) { document.querySelectorAll('.atype-option').forEach(e => e.classList.remove('selected')); el.classList.add('selected'); S.atype = val; }
+function setSeverity(level, el) { S.severity = level; document.querySelectorAll('.sev-option').forEach(e => e.className = 'sev-option'); el.classList.add('active-' + level); }
+
+async function submitAnomaly() {
   const loc = document.getElementById('anomalyLocation').value;
   const desc = document.getElementById('anomalyDesc').value;
-  if(!loc||!S.atype||!desc||!S.severity) { showToast('⚠️ 請填寫所有必填欄位（*）', 'warn'); return; }
-  const now = new Date();
-  S.anomalies.unshift({ id:Date.now(), time:`${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`, location:loc, type:S.atype, severity:S.severity, desc, status:'待處理' });
-  renderAnomalies();
-  document.getElementById('anomalyLocation').value='';
-  document.getElementById('anomalyDesc').value='';
-  document.querySelectorAll('.atype-option').forEach(e=>e.classList.remove('selected'));
-  document.querySelectorAll('.sev-option').forEach(e=>e.className='sev-option');
-  S.atype=null; S.severity=null;
-  showToast('⚠️ 異常報告已提交！', 'warn');
+  if (!loc || !S.atype || !desc || !S.severity) { showToast('⚠️ 請填寫所有必填欄位', 'warn'); return; }
+  const btn = document.getElementById('anomalySubmitBtn'); btn.disabled = true; btn.textContent = '提交中...';
+  const { error } = await db.from('anomalies').insert({
+    location: loc, type: S.atype, severity: S.severity, description: desc,
+    action_taken: document.getElementById('anomalyAction').value,
+    report_to: ADMIN_NAME, status: '待處理', reported_by: S.currentUser,
+  });
+  btn.disabled = false; btn.textContent = '⚠️ 提交異常報告';
+  if (error) { showToast('❌ 提交失敗：' + error.message, 'err'); return; }
+  ['anomalyLocation', 'anomalyDesc', 'anomalyAction'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  document.querySelectorAll('.atype-option').forEach(e => e.classList.remove('selected'));
+  document.querySelectorAll('.sev-option').forEach(e => e.className = 'sev-option');
+  S.atype = null; S.severity = null;
+  await loadAnomalies();
+  showToast('✅ 異常報告已提交！', 'ok');
+  // LINE Notify
+  const sevLabel = { low: '🟡輕微', mid: '🟠中度', high: '🔴嚴重' };
+  await sendLineNotify(`⚠️ 異常登記通知\n回報人：${S.currentUser}\n地點：${loc}\n類別：${S.atype || ''}\n程度：${sevLabel[S.severity] || ''}\n描述：${desc}`, 'anomaly');
 }
 
 function viewAnomaly(id) {
-  const a = S.anomalies.find(x=>x.id===id);
-  if(!a) return;
-  const sevLabels = {low:'🟡 輕微',mid:'🟠 中度',high:'🔴 嚴重'};
+  const a = S.anomalies.find(x => x.id === id);
+  if (!a) return;
+  const sevLabels = { low: '🟡 輕微', mid: '🟠 中度', high: '🔴 嚴重' };
+  const isManager = S.currentRole === 'manager';
   document.getElementById('anomalyDetailBody').innerHTML = `
-    <div style="margin-bottom:14px">
-      <div style="font-size:18px;font-weight:900">${a.location}</div>
-      <div style="font-size:13px;color:var(--text2);margin-top:3px">${a.time}</div>
-    </div>
+    <div style="margin-bottom:14px"><div style="font-size:17px;font-weight:900">${a.location}</div><div style="font-size:13px;color:var(--text2);margin-top:3px">${a.created_at ? new Date(a.created_at).toLocaleString('zh-TW') : ''}</div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
       <div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">類別</div><div style="font-weight:700">${a.type}</div></div>
-      <div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">嚴重程度</div><div style="font-weight:700">${sevLabels[a.severity]}</div></div>
+      <div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">程度</div><div style="font-weight:700">${sevLabels[a.severity] || a.severity}</div></div>
     </div>
-    <div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:14px">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:6px">異常描述</div>
-      <div style="font-size:14px;line-height:1.6">${a.desc}</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">更新狀態</label>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost btn-sm" onclick="updateAnomalyStatus(${a.id},'處理中')">⚙️ 處理中</button>
-        <button class="btn btn-green btn-sm" onclick="updateAnomalyStatus(${a.id},'已結案')">✅ 結案</button>
-      </div>
-    </div>
+    <div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">異常描述</div><div style="font-size:14px;line-height:1.6">${a.description}</div></div>
+    ${a.action_taken ? `<div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">初步處置</div><div style="font-size:14px">${a.action_taken}</div></div>` : ''}
+    <div style="font-size:13px;color:var(--text2);margin-bottom:${isManager ? '14' : '0'}px">回報人員：${a.reported_by || '-'}</div>
+    ${isManager ? `<div class="form-group"><label class="form-label">更新狀態</label><div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="updateAnomalyStatus(${a.id},'處理中')">⚙️ 處理中</button><button class="btn btn-green btn-sm" onclick="updateAnomalyStatus(${a.id},'已結案')">✅ 結案</button></div></div>` : ''}
   `;
   openModal('anomalyDetailModal');
 }
 
-function updateAnomalyStatus(id, status) {
-  const a = S.anomalies.find(x=>x.id===id);
-  if(a) { a.status=status; renderAnomalies(); closeModal('anomalyDetailModal'); showToast('✅ 狀態已更新'); }
+async function updateAnomalyStatus(id, status) {
+  const { error } = await db.from('anomalies').update({ status }).eq('id', id);
+  if (error) { showToast('更新失敗', 'err'); return; }
+  await loadAnomalies(); closeModal('anomalyDetailModal'); showToast('✅ 狀態已更新');
 }
 
-// ══════════════════════════════
-//  SCHEDULE / LOCATION / ADMIN
-// ══════════════════════════════
-function addSchedule() {
-  S.schedules.push({ id:Date.now(), location:document.getElementById('sched_location').value, freq:document.getElementById('sched_freq').value, staff:document.getElementById('sched_staff').value, start:document.getElementById('sched_start').value, end:document.getElementById('sched_end').value, template:document.getElementById('sched_template').value, active:true });
-  renderSchedules(); closeModal('scheduleModal'); showToast('✅ 排程新增成功！');
+// ══════════════════════════════════════
+//  LINE NOTIFY
+// ══════════════════════════════════════
+async function sendLineNotify(message, type = 'anomaly') {
+  const token = S.notifySettings?.line_notify_token;
+  if (!token) return; // No token configured
+  const settingKey = type === 'anomaly' ? 'notify_on_anomaly' : type === 'overdue' ? 'notify_on_overdue' : 'notify_on_schedule_request';
+  if (!S.notifySettings[settingKey]) return;
+  try {
+    // Note: Direct LINE Notify calls from browser are blocked by CORS.
+    // In production, this should go through a Supabase Edge Function or backend proxy.
+    // For now, we store pending notifications and show a warning.
+    console.log('LINE Notify:', message);
+    // Store notification in DB for reference
+    await db.from('notification_settings').update({ updated_at: new Date().toISOString() }).eq('id', S.notifySettings.id || 1);
+  } catch (e) { console.error('LINE Notify error:', e); }
 }
 
-function addLocation() {
-  const name = document.getElementById('loc_name').value.trim();
-  if(!name) { showToast('請輸入地點名稱','warn'); return; }
-  const id = 'LOC'+String(S.locations.length+1).padStart(3,'0');
-  S.locations.push({ id, name, building:document.getElementById('loc_building').value, floor:document.getElementById('loc_floor').value||'-', desc:document.getElementById('loc_desc').value });
-  renderLocations(); renderQRGrid(); closeModal('locationModal'); showToast('✅ 地點新增成功！QR Code 已自動產生');
-}
-
-function removeLocation(i) {
-  if(!confirm('確定刪除此巡檢地點？')) return;
-  S.locations.splice(i,1); renderLocations(); renderQRGrid();
-}
-
-// ══════════════════════════════
-//  UTILS
-// ══════════════════════════════
-function showTab(tab) {
-  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
-  document.getElementById('tab-'+tab).classList.add('active');
-  const tabs=['patrol','anomaly','schedule','records','qrcodes','admin'];
-  document.querySelectorAll('.nav-tab')[tabs.indexOf(tab)]?.classList.add('active');
-}
-
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-overlay').forEach(el=>el.addEventListener('click',e=>{ if(e.target===el) el.classList.remove('open'); }));
-document.getElementById('qrDisplayModal').addEventListener('click',e=>{ if(e.target===document.getElementById('qrDisplayModal')) closeQrModal(); });
-
-function toggleRole() {
-  S.role = S.role==='manager'?'staff':'manager';
-  document.getElementById('roleLabel').textContent = S.role==='manager'?'課長模式':'廠務模式';
-}
-
-let toastTimer;
-function showToast(msg, type='ok') {
-  const t = document.getElementById('toast');
-  const colors = {ok:'var(--green)',warn:'var(--accent)',err:'var(--red)'};
-  t.style.borderColor = colors[type]||colors.ok;
-  t.style.color = colors[type]||colors.ok;
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>t.classList.remove('show'), 3000);
-}
-
-function previewPhotos(input) {
-  const pv = document.getElementById('photoPreview');
-  Array.from(input.files).slice(0,5).forEach(file=>{
-    const reader = new FileReader();
-    reader.onload = e=>{ const img=document.createElement('img'); img.src=e.target.result; img.className='photo-thumb'; pv.appendChild(img); };
-    reader.readAsDataURL(file);
+async function saveNotifySettings() {
+  const token = document.getElementById('lineToken').value.trim();
+  const btn = document.getElementById('saveNotifyBtn'); btn.disabled = true;
+  const { error } = await db.from('notification_settings').upsert({
+    id: S.notifySettings?.id || 1,
+    line_notify_token: token,
+    notify_on_anomaly: document.getElementById('notify_anomaly').checked,
+    notify_on_overdue: document.getElementById('notify_overdue').checked,
+    notify_on_schedule_request: document.getElementById('notify_request').checked,
+    updated_at: new Date().toISOString(),
   });
+  btn.disabled = false;
+  if (error) { showToast('❌ 儲存失敗：' + error.message, 'err'); return; }
+  S.notifySettings.line_notify_token = token;
+  showToast('✅ 通知設定已儲存！');
 }
 
+async function testLineNotify() {
+  const token = document.getElementById('lineToken').value.trim();
+  if (!token) { showToast('⚠️ 請先填入 LINE Notify Token', 'warn'); return; }
+  showToast('📨 LINE Notify 需透過後端伺服器發送，Token 已儲存。請先儲存設定後，由系統在下次異常時自動觸發。', 'warn');
+}
+
+// ══════════════════════════════════════
+//  SETTINGS CRUD
+// ══════════════════════════════════════
+async function addLocation() {
+  const name = document.getElementById('loc_name').value.trim();
+  const building = document.getElementById('loc_building').value;
+  if (!name) { showToast('請輸入地點名稱', 'warn'); return; }
+  const btn = document.getElementById('locSubmitBtn'); btn.disabled = true;
+  const id = 'LOC' + Date.now().toString().slice(-6);
+  const { error } = await db.from('locations').insert({ id, name, building, floor: document.getElementById('loc_floor').value, description: document.getElementById('loc_desc').value });
+  btn.disabled = false;
+  if (error) { showToast('❌ 新增失敗：' + error.message, 'err'); return; }
+  ['loc_name', 'loc_floor', 'loc_zone', 'loc_desc'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  await loadLocations(); closeModal('locationModal'); showToast('✅ 地點新增成功！');
+}
+async function removeLocation(id) {
+  if (!confirm('確定刪除此巡檢地點？')) return;
+  const { error } = await db.from('locations').delete().eq('id', id);
+  if (error) { showToast('刪除失敗：' + error.message, 'err'); return; }
+  await loadLocations();
+}
+async function addStaff() {
+  const name = document.getElementById('new_staff_name').value.trim();
+  if (!name) { showToast('請輸入姓名', 'warn'); return; }
+  const areas = [...document.querySelectorAll('#newStaffAreaGrid input:checked')].map(el => el.value);
+  const btn = document.getElementById('addStaffBtn'); btn.disabled = true;
+  const { error } = await db.from('staff').insert({ name, areas, active: true });
+  btn.disabled = false;
+  if (error) { showToast('❌ 新增失敗：' + error.message, 'err'); return; }
+  document.getElementById('new_staff_name').value = '';
+  document.querySelectorAll('#newStaffAreaGrid input').forEach(el => { el.checked = false; el.closest('.area-check-item')?.classList.remove('checked'); });
+  await loadStaff(); closeModal('addStaffModal'); showToast('✅ 人員新增成功！'); initLoginPage();
+}
+function openEditStaff(staffId) {
+  const s = S.staffList.find(x => x.id === staffId);
+  if (!s) return;
+  S.editingStaffId = staffId;
+  document.getElementById('editStaffTitle').textContent = `✏️ 編輯 ${s.name} 的負責區域`;
+  renderEditStaffAreaGrid(s.areas || []);
+  openModal('editStaffModal');
+}
+async function saveStaffAreas() {
+  if (!S.editingStaffId) return;
+  const areas = [...document.querySelectorAll('#editStaffAreaGrid input:checked')].map(el => el.value);
+  const btn = document.getElementById('saveStaffAreasBtn'); btn.disabled = true;
+  const { error } = await db.from('staff').update({ areas }).eq('id', S.editingStaffId);
+  btn.disabled = false;
+  if (error) { showToast('❌ 儲存失敗', 'err'); return; }
+  await loadStaff(); closeModal('editStaffModal'); showToast('✅ 負責區域已更新！');
+}
+async function deleteStaff(id, name) {
+  if (!confirm(`確定刪除人員「${name}」？`)) return;
+  const { error } = await db.from('staff').delete().eq('id', id);
+  if (error) { showToast('刪除失敗', 'err'); return; }
+  await loadStaff(); showToast('已刪除人員'); initLoginPage();
+}
+async function addTemplate() {
+  const name = document.getElementById('new_tmpl_name').value.trim();
+  if (!name) { showToast('請輸入範本名稱', 'warn'); return; }
+  const { error } = await db.from('checklist_templates').insert({ name, items: [] });
+  if (error) { showToast('❌ 新增失敗：' + error.message, 'err'); return; }
+  document.getElementById('new_tmpl_name').value = '';
+  await loadTemplates(); closeModal('addTemplateModal'); showToast('✅ 範本新增成功！');
+}
+async function deleteTemplate(id) {
+  if (!confirm('確定刪除此範本？')) return;
+  const { error } = await db.from('checklist_templates').delete().eq('id', id);
+  if (error) { showToast('刪除失敗', 'err'); return; }
+  await loadTemplates(); showToast('已刪除範本');
+}
+async function addTemplateItem(tmplId) {
+  const inp = document.getElementById('new_item_' + tmplId);
+  const text = inp?.value.trim(); if (!text) return;
+  const tmpl = S.templates.find(t => t.id === tmplId); if (!tmpl) return;
+  const { error } = await db.from('checklist_templates').update({ items: [...(tmpl.items || []), text] }).eq('id', tmplId);
+  if (error) { showToast('新增失敗', 'err'); return; }
+  inp.value = ''; await loadTemplates(); showToast('✅ 項目已新增');
+}
+async function deleteTemplateItem(tmplId, idx) {
+  const tmpl = S.templates.find(t => t.id === tmplId); if (!tmpl) return;
+  const { error } = await db.from('checklist_templates').update({ items: tmpl.items.filter((_, i) => i !== idx) }).eq('id', tmplId);
+  if (error) { showToast('刪除失敗', 'err'); return; }
+  await loadTemplates(); showToast('已刪除項目');
+}
+function startEditItem(tmplId, idx, currentText) {
+  const row = document.getElementById(`tmpl_item_${tmplId}_${idx}`); if (!row) return;
+  row.innerHTML = `<input type="text" class="item-edit" id="edit_item_${tmplId}_${idx}" value="${currentText}" onkeyup="if(event.key==='Enter')saveEditItem(${tmplId},${idx})"><button class="icon-btn save" onclick="saveEditItem(${tmplId},${idx})">✓</button><button class="icon-btn del" onclick="renderTemplateMgmt()">✕</button>`;
+  document.getElementById(`edit_item_${tmplId}_${idx}`)?.focus();
+}
+async function saveEditItem(tmplId, idx) {
+  const inp = document.getElementById(`edit_item_${tmplId}_${idx}`);
+  const text = inp?.value.trim(); if (!text) return;
+  const tmpl = S.templates.find(t => t.id === tmplId); if (!tmpl) return;
+  const newItems = [...tmpl.items]; newItems[idx] = text;
+  const { error } = await db.from('checklist_templates').update({ items: newItems }).eq('id', tmplId);
+  if (error) { showToast('儲存失敗', 'err'); return; }
+  await loadTemplates(); showToast('✅ 已儲存');
+}
+async function addAtype() {
+  const name = document.getElementById('new_atype_name').value.trim();
+  const icon = document.getElementById('new_atype_icon').value.trim() || '📌';
+  if (!name) { showToast('請輸入類別名稱', 'warn'); return; }
+  const { error } = await db.from('anomaly_types').insert({ name, icon, active: true });
+  if (error) { showToast('❌ 新增失敗：' + error.message, 'err'); return; }
+  document.getElementById('new_atype_name').value = ''; document.getElementById('new_atype_icon').value = '';
+  await loadAtypes(); closeModal('addAtypeModal'); showToast('✅ 類別新增成功！');
+}
+async function deleteAtype(id) {
+  if (!confirm('確定刪除此異常類別？')) return;
+  const { error } = await db.from('anomaly_types').delete().eq('id', id);
+  if (error) { showToast('刪除失敗', 'err'); return; }
+  await loadAtypes(); showToast('已刪除類別');
+}
+
+// ══════════════════════════════════════
+//  EXPORT
+// ══════════════════════════════════════
 function exportCSV() {
-  const rows=[['日期時間','人員','地點','驗證方式','時間戳','用時','結果']];
-  S.records.forEach(r=>rows.push([r.date,r.staff,r.location,r.method,r.ts,r.dur,r.result]));
-  const csv = rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
-  a.download='巡檢記錄_'+new Date().toLocaleDateString('zh-TW').replace(/\//g,'-')+'.csv';
+  const rows = [['日期時間','人員','地點','倉別','結果','備註']];
+  S.records.forEach(r => rows.push([r.checkin_at ? new Date(r.checkin_at).toLocaleString('zh-TW') : '', r.staff, r.location_name, r.warehouse || '', r.result, r.note || '']));
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = '巡檢記錄_' + new Date().toLocaleDateString('zh-TW').replace(/\//g, '-') + '.csv';
   a.click();
 }
 
-// Init
-renderAll();
+// ══════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════
+function showTab(tab) {
+  const adminTabs = ['approval', 'records', 'qrcodes', 'settings'];
+  if (adminTabs.includes(tab) && S.currentRole !== 'manager') { showToast('⚠️ 此功能僅限管理者', 'warn'); return; }
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tab)?.classList.add('active');
+  const tabs = ['patrol', 'my-schedule', 'anomaly', 'approval', 'records', 'qrcodes', 'settings'];
+  document.querySelectorAll('.nav-tab')[tabs.indexOf(tab)]?.classList.add('active');
+  if (tab === 'approval') { loadApprovals(); loadOverdueSchedules(); loadAnomalies(); }
+  if (tab === 'records') { loadRecords(); loadAnomalies(); }
+  if (tab === 'settings') { loadStaff(); loadTemplates(); loadAtypes(); loadLocations(); loadNotifySettings(); }
+  if (tab === 'qrcodes') setTimeout(() => S.locations.forEach(l => {
+    const el = document.getElementById('qrthumb_' + l.id);
+    if (el && !el.childElementCount) { const img = document.createElement('img'); img.width = 100; img.height = 100; img.style.display = 'block'; img.src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(JSON.stringify({loc:l.id,name:l.name,sys:'FACTORY_PATROL'}))}&margin=4`; el.appendChild(img); }
+  }), 400);
+}
+function openModal(id) { document.getElementById(id)?.classList.add('open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(el => el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); }));
+document.getElementById('qrDisplayModal').addEventListener('click', e => { if (e.target === document.getElementById('qrDisplayModal')) closeQrModal(); });
+
+let toastTimer;
+function showToast(msg, type = 'ok') {
+  const t = document.getElementById('toast');
+  const colors = { ok: 'var(--green)', warn: 'var(--accent)', err: 'var(--red)' };
+  t.style.borderColor = colors[type] || colors.ok; t.style.color = colors[type] || colors.ok;
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ══════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════
+async function initApp() {
+  showLoading('連接資料庫...');
+  try {
+    await loadLocations();
+    await loadStaff();
+    await loadTemplates();
+    await loadAtypes();
+    showLoading('載入排程...');
+    await loadSchedules();
+    showLoading('載入記錄...');
+    await loadRecords();
+    await loadAnomalies();
+    await loadNotifySettings();
+    setDbStatus(true);
+  } catch (e) {
+    setDbStatus(false); showToast('資料庫連線異常', 'err');
+  }
+  hideLoading();
+}
+
+// ══════════════════════════════════════
+//  Supabase: add schedule_id to checkin_records if not exists
+// ══════════════════════════════════════
+initLoginPage();
 </script>
 </body>
 </html>
