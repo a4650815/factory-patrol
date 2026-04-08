@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>廠區巡檢系統</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
 :root{
@@ -465,7 +466,10 @@ tr:last-child td{border-bottom:none;}
   <div class="card">
     <div class="card-title">
       <div class="card-title-left"><div class="section-icon">📋</div><span>我的異常記錄</span></div>
-      <button class="btn btn-ghost btn-sm" onclick="loadAnomalies()">🔄</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="exportAnomalyCSV()">📥 匯出報表</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadAnomalies()">🔄</button>
+      </div>
     </div>
     <div class="table-wrap">
       <table><thead><tr><th>時間</th><th>地點</th><th>類別</th><th>程度</th><th>狀態</th><th></th></tr></thead>
@@ -476,6 +480,12 @@ tr:last-child td{border-bottom:none;}
 
 <!-- ══ 待審核（管理者） ══ -->
 <div id="tab-approval" class="tab-content">
+  <div class="card">
+    <div class="card-title">
+      <div class="card-title-left"><div class="section-icon">✅</div><span>待結案異常 <span id="pendingCloseCount" class="tab-badge" style="display:none;margin-left:6px">0</span></span></div>
+    </div>
+    <div id="pendingCloseList"><div class="empty-state"><div class="empty-icon">✅</div><p>目前無待結案異常</p></div></div>
+  </div>
   <div class="card">
     <div class="card-title">
       <div class="card-title-left"><div class="section-icon">✋</div><span>待審核排程申請</span></div>
@@ -497,7 +507,9 @@ tr:last-child td{border-bottom:none;}
     <div id="overdueList"><div class="empty-state"><div class="empty-icon">✅</div><p>目前無逾期排程</p></div></div>
   </div>
   <div class="card">
-    <div class="card-title"><div class="card-title-left"><div class="section-icon">⚠️</div><span>所有異常記錄</span></div></div>
+    <div class="card-title"><div class="card-title-left"><div class="section-icon">⚠️</div><span>所有異常記錄</span></div>
+      <button class="btn btn-ghost btn-sm" onclick="exportAnomalyCSV()">📥 匯出報表</button>
+    </div>
     <div class="table-wrap">
       <table><thead><tr><th>時間</th><th>回報人</th><th>地點</th><th>類別</th><th>程度</th><th>狀態</th><th></th></tr></thead>
       <tbody id="allAnomalyList"><tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">載入中...</td></tr></tbody></table>
@@ -543,37 +555,21 @@ tr:last-child td{border-bottom:none;}
 <!-- ══ 系統設定（管理者） ══ -->
 <div id="tab-settings" class="tab-content">
 
-  <!-- LINE Notify -->
+  <!-- Email 通知 -->
   <div class="card">
-    <div class="card-title"><div class="card-title-left"><div class="section-icon">🔔</div><span>LINE Notify 通知設定</span></div></div>
-    <div class="alert alert-info">ℹ️ 設定後，異常登記和逾期未完成時，系統自動傳訊息到您的 LINE</div>
-    <div class="form-group">
-      <label class="form-label">LINE Notify Token</label>
-      <input type="text" class="form-control" id="lineToken" placeholder="貼上您的 LINE Notify Token...">
-      <div style="font-size:12px;color:var(--text2);margin-top:5px">尚未申請？請看下方教學</div>
-    </div>
-    <div style="background:var(--bg3);border-radius:10px;padding:14px;margin-bottom:14px">
-      <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--accent)">📖 LINE Notify 申請步驟</div>
-      <div style="font-size:13px;color:var(--text2);line-height:2">
-        1️⃣ 用手機或電腦開啟 <strong style="color:var(--text)">notify-bot.line.me</strong><br>
-        2️⃣ 右上角點「登入」→ 用您的 LINE 帳號登入<br>
-        3️⃣ 右上角點您的名稱 → 選「個人頁面」<br>
-        4️⃣ 下滑找到「發行存取權杖（開發人員用）」→ 點「發行」<br>
-        5️⃣ 輸入名稱（例如：廠區巡檢）→ 點「發行」<br>
-        6️⃣ 複製出現的 Token → 貼到上方欄位 → 儲存
-      </div>
-    </div>
+    <div class="card-title"><div class="card-title-left"><div class="section-icon">🔔</div><span>Email 通知設定</span></div></div>
+    <div class="alert alert-success">✅ Email 通知已設定完成，異常登記和排程申請時自動發送到 <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="41383435282f2601272c246f222e2c6f3536">[email&#160;protected]</a></strong></div>
     <div class="form-group">
       <label class="form-label">通知時機</label>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="notify_anomaly" checked style="accent-color:var(--accent)"> 異常登記時通知</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="notify_overdue" checked style="accent-color:var(--accent)"> 排程逾期時通知</label>
-        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="notify_request" checked style="accent-color:var(--accent)"> 排程申請/改期時通知</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="notify_anomaly" checked style="accent-color:var(--accent)"> ⚠️ 異常登記時通知</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="notify_overdue" checked style="accent-color:var(--accent)"> ⏰ 排程逾期時通知</label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="notify_request" checked style="accent-color:var(--accent)"> 📅 排程申請／改期時通知</label>
       </div>
     </div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-accent" onclick="saveNotifySettings()" id="saveNotifyBtn">💾 儲存設定</button>
-      <button class="btn btn-ghost" onclick="testLineNotify()">📨 發送測試訊息</button>
+      <button class="btn btn-ghost" onclick="testEmailNotify()">📨 發送測試信件</button>
     </div>
   </div>
 
@@ -771,6 +767,46 @@ tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
+<!-- ══ REASSIGN REQUEST MODAL ══ -->
+<div class="modal-overlay" id="reassignRequestModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><h3>🔄 申請重新指派</h3><button class="close-btn" onclick="closeModal('reassignRequestModal')">✕</button></div>
+    <div class="modal-body">
+      <div id="reassignRequestInfo" style="background:var(--bg3);border-radius:10px;padding:14px;margin-bottom:14px;font-size:14px;color:var(--text2);line-height:1.7"></div>
+      <div class="form-group">
+        <label class="form-label">建議新完成日期 *</label>
+        <input type="date" class="form-control" id="reassign_new_date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">申請原因 *</label>
+        <textarea class="form-control" id="reassign_reason" placeholder="請說明逾期原因及建議新日期理由..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" style="flex:1" onclick="closeModal('reassignRequestModal')">取消</button>
+        <button class="btn btn-accent" style="flex:1" id="reassignSubmitBtn" onclick="submitReassignRequest()">送出申請</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EDIT SCHEDULE MODAL ══ -->
+<div class="modal-overlay" id="editScheduleModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><h3>✏️ 編輯排程</h3><button class="close-btn" onclick="closeModal('editScheduleModal')">✕</button></div>
+    <div class="modal-body" id="editScheduleBody"></div>
+    <div class="modal-footer">
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" style="flex:1" onclick="closeModal('editScheduleModal')">取消</button>
+        <button class="btn btn-accent" style="flex:1" id="saveScheduleBtn" onclick="saveScheduleEdit()">💾 儲存變更</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ CHANGE REQUEST MODAL ══ -->
 <div class="modal-overlay" id="changeRequestModal">
   <div class="modal">
@@ -901,7 +937,7 @@ tr:last-child td{border-bottom:none;}
 
 <div id="toast"></div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // ══════════════════════════════════════
 //  CONFIG
 // ══════════════════════════════════════
@@ -911,6 +947,12 @@ const ADMIN_PASSWORD = '1234';
 const ADMIN_NAME = '鄧羽廷';
 const WEEKDAY_NAMES = ['週日','週一','週二','週三','週四','週五','週六'];
 const AVATAR_COLORS = ['#3fb950','#58a6ff','#ff7b33','#a371f7','#f85149','#f0a500','#39c5cf'];
+
+// EmailJS 設定
+const EMAILJS_SERVICE_ID  = 'service_0hvxev6';
+const EMAILJS_TEMPLATE_ID = 'template_yey4gac';
+const EMAILJS_PUBLIC_KEY  = 'mBHZfRi9Q7Ch9CSN-';
+const NOTIFY_EMAIL        = 'yuting@fme.com.tw';
 
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -939,19 +981,29 @@ const S = {
 //  LOGIN
 // ══════════════════════════════════════
 async function initLoginPage() {
-  const { data } = await db.from('staff').select('*').eq('active', true).order('id');
   const grid = document.getElementById('staffLoginGrid');
-  if (!data || !data.length) {
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text3);font-size:13px;padding:12px">尚無廠務人員，請管理者登入後新增</div>';
-    return;
+  try {
+    const { data, error } = await db.from('staff').select('*').eq('active', true).order('id');
+    if (error) throw error;
+    if (!data || !data.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text3);font-size:13px;padding:12px">尚無廠務人員，請管理者登入後新增</div>';
+      return;
+    }
+    grid.innerHTML = data.map((s, i) => `
+      <div class="user-btn" onclick="loginAs('${s.name}','staff')">
+        <div class="u-avatar" style="background:${AVATAR_COLORS[i % AVATAR_COLORS.length]}">${s.name[0]}</div>
+        <div class="u-name">${s.name}</div>
+        <div class="u-role">廠務人員</div>
+      </div>
+    `).join('');
+  } catch(e) {
+    console.error('載入人員失敗:', e);
+    grid.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:12px">
+        <div style="color:var(--red);font-size:13px;margin-bottom:10px">⚠️ 載入人員失敗</div>
+        <button class="btn btn-ghost btn-sm" onclick="initLoginPage()">🔄 重新載入</button>
+      </div>`;
   }
-  grid.innerHTML = data.map((s, i) => `
-    <div class="user-btn" onclick="loginAs('${s.name}','staff')">
-      <div class="u-avatar" style="background:${AVATAR_COLORS[i % AVATAR_COLORS.length]}">${s.name[0]}</div>
-      <div class="u-name">${s.name}</div>
-      <div class="u-role">廠務人員</div>
-    </div>
-  `).join('');
 }
 
 function selectManager() {
@@ -1009,13 +1061,25 @@ async function loadLocations() {
   if (error) { setDbStatus(false); return; }
   setDbStatus(true); S.locations = data || [];
   renderLocations(); renderQRGrid();
-  const locOpts = S.locations.map(l => `<option value="${l.id}">${l.name} (${l.building})</option>`).join('');
-  // anomaly location dropdown
+
+  // 異常登記地點：廠務人員只顯示自己負責的區域，管理者顯示全部
+  let anomalyLocs = S.locations;
+  if (S.currentRole !== 'manager' && S.staffList.length) {
+    const me = S.staffList.find(x => x.name === S.currentUser);
+    const myAreas = me?.areas || [];
+    if (myAreas.length > 0) {
+      anomalyLocs = S.locations.filter(l => myAreas.includes(l.name));
+    }
+  }
+  const anomalyOpts = anomalyLocs.map(l => `<option value="${l.name}">${l.name} (${l.building})</option>`).join('');
   const al = document.getElementById('anomalyLocation');
-  if (al) al.innerHTML = '<option value="">請選擇地點</option>' + locOpts;
-  // weekly schedule location dropdown
+  if (al) al.innerHTML = '<option value="">請選擇地點</option>' + anomalyOpts;
+
+  // 週排程地點：全部顯示
+  const locOpts = S.locations.map(l => `<option value="${l.id}">${l.name} (${l.building})</option>`).join('');
   const wl = document.getElementById('sched_location_weekly');
   if (wl) wl.innerHTML = locOpts || '<option>請先新增地點</option>';
+
   renderNewStaffAreaGrid(); renderEditStaffAreaGrid();
 }
 async function loadStaff() {
@@ -1035,6 +1099,21 @@ async function loadStaff() {
       for (let o of el.options) { if (o.value === S.currentUser) { o.selected = true; break; } }
     });
   }
+  // 人員載入後刷新異常地點篩選
+  refreshAnomalyLocationDropdown();
+}
+
+function refreshAnomalyLocationDropdown() {
+  if (!S.locations.length) return;
+  let anomalyLocs = S.locations;
+  if (S.currentRole !== 'manager' && S.staffList.length) {
+    const me = S.staffList.find(x => x.name === S.currentUser);
+    const myAreas = me?.areas || [];
+    if (myAreas.length > 0) anomalyLocs = S.locations.filter(l => myAreas.includes(l.name));
+  }
+  const opts = anomalyLocs.map(l => `<option value="${l.name}">${l.name} (${l.building})</option>`).join('');
+  const al = document.getElementById('anomalyLocation');
+  if (al) al.innerHTML = '<option value="">請選擇地點</option>' + (opts || '<option disabled>無負責區域，請聯絡管理者</option>');
 }
 async function loadTemplates() {
   const { data } = await db.from('checklist_templates').select('*').order('id');
@@ -1067,9 +1146,14 @@ async function loadAnomalies() {
 async function loadApprovals() {
   const { data: pending } = await db.from('schedules').select('*').eq('status', 'pending_approval').order('created_at');
   const { data: changes } = await db.from('schedule_change_requests').select('*').eq('status', 'pending').order('created_at');
+  // 也載入「已完成待結案」的異常
+  const { data: pendingClose } = await db.from('anomalies').select('*').eq('status', '已完成').order('created_at');
   renderApprovalList(pending || []);
   renderChangeRequestList(changes || []);
-  const total = (pending?.length || 0) + (changes?.length || 0);
+  // 「待結案異常」提示
+  const closeList = document.getElementById('pendingCloseList');
+  if (closeList) renderPendingCloseList(pendingClose || []);
+  const total = (pending?.length || 0) + (changes?.length || 0) + (pendingClose?.length || 0);
   const badge = document.getElementById('approvalBadge');
   if (badge) { badge.textContent = total; badge.style.display = total ? '' : 'none'; }
 }
@@ -1082,8 +1166,6 @@ async function loadNotifySettings() {
   const { data } = await db.from('notification_settings').select('*').limit(1);
   if (data && data.length) {
     S.notifySettings = data[0];
-    const lineTokenEl = document.getElementById('lineToken');
-    if (lineTokenEl) lineTokenEl.value = data[0].line_notify_token || '';
     const na = document.getElementById('notify_anomaly'); if (na) na.checked = data[0].notify_on_anomaly !== false;
     const no = document.getElementById('notify_overdue'); if (no) no.checked = data[0].notify_on_overdue !== false;
     const nr = document.getElementById('notify_request'); if (nr) nr.checked = data[0].notify_on_schedule_request !== false;
@@ -1107,11 +1189,21 @@ function buildTodayTasks() {
     return false;
   });
 
-  // Filter by staff area
+  // Filter: 廠務人員只看「自己負責的排程」(直接比對 staff 欄位)
+  // 同時加上 area 篩選作為輔助（必須同時符合 staff 姓名 OR 在負責區域內）
   if (S.currentRole !== 'manager') {
     const me = S.staffList.find(x => x.name === S.currentUser);
     const myAreas = me?.areas || [];
-    if (myAreas.length > 0) eligible = eligible.filter(s => myAreas.includes(s.location_name));
+    eligible = eligible.filter(s => {
+      // 主要：排程負責人是自己
+      if (s.staff === S.currentUser) return true;
+      // 次要：地點在自己負責區域內（用 location_id 精確比對避免同名）
+      if (myAreas.length > 0) {
+        const locObj = S.locations.find(l => l.id === s.location_id);
+        if (locObj && myAreas.includes(locObj.name)) return true;
+      }
+      return false;
+    });
   }
 
   // Check what's done today
@@ -1242,11 +1334,18 @@ function renderMySchedules() {
           <span class="badge ${sm.cls}">${sm.label}</span>
         </div>
         ${s.status === 'pending_approval' ? `<div class="alert alert-purple" style="margin-bottom:0;margin-top:8px;font-size:12px">⏳ 等待管理者審核中</div>` : ''}
-        ${s.status === 'overdue' ? `<div class="alert alert-warning" style="margin-bottom:0;margin-top:8px;font-size:12px">⏰ 已逾期，等待管理者重新指派</div>` : ''}
-        ${(canComplete || canReschedule) ? `
+        ${s.status === 'overdue' && S.currentRole !== 'manager' ? `
+          <div class="alert alert-warning" style="margin-bottom:0;margin-top:8px;font-size:12px">⏰ 此排程已逾期，請申請重新指派</div>
+          <div class="approval-actions" style="margin-top:10px">
+            <button class="btn btn-accent btn-sm" onclick="openReassignRequest(${s.id})">🔄 申請重新指派</button>
+          </div>` : ''}
+        ${s.status === 'overdue' && S.currentRole === 'manager' ? `<div class="alert alert-warning" style="margin-bottom:0;margin-top:8px;font-size:12px">⏰ 已逾期</div>` : ''}
+        ${(canComplete || canReschedule || S.currentRole === 'manager') ? `
           <div class="approval-actions" style="margin-top:10px">
             ${canComplete ? `<button class="btn btn-green btn-sm" onclick="openTaskComplete(${s.id})">✅ 完成任務</button>` : ''}
             ${canReschedule ? `<button class="btn btn-ghost btn-sm" onclick="openChangeRequest(${s.id})">🔄 申請改期</button>` : ''}
+            ${S.currentRole === 'manager' ? `<button class="btn btn-ghost btn-sm" onclick="openEditSchedule(${s.id})">✏️ 編輯</button>` : ''}
+            ${S.currentRole === 'manager' ? `<button class="btn btn-sm" style="background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,.3)" onclick="deleteSchedule(${s.id})">🗑 刪除</button>` : ''}
           </div>` : ''}
       </div>
     `;
@@ -1260,6 +1359,51 @@ function renderMySchedules() {
 // ══════════════════════════════════════
 //  RENDER APPROVALS
 // ══════════════════════════════════════
+function renderPendingCloseList(items) {
+  const list = document.getElementById('pendingCloseList');
+  const badge = document.getElementById('pendingCloseCount');
+  if (!list) return;
+  if (badge) { badge.textContent = items.length; badge.style.display = items.length ? '' : 'none'; }
+  if (!items.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>目前無待結案異常</p></div>'; return; }
+  const sevLabel = { low: '🟡 輕微', mid: '🟠 中度', high: '🔴 嚴重' };
+  list.innerHTML = items.map(a => `
+    <div class="approval-card" style="border-color:rgba(163,113,247,.3);background:rgba(163,113,247,.04)">
+      <div class="approval-card-header">
+        <div style="flex:1">
+          <div class="approval-title">📍 ${a.location}</div>
+          <div class="approval-meta">
+            回報人：${a.reported_by || '—'} &nbsp;|&nbsp; ${sevLabel[a.severity] || a.severity}<br>
+            異常描述：${a.description?.slice(0,40) || '—'}${(a.description?.length||0)>40?'...':''}<br>
+            <span style="color:var(--purple)">✅ 完成說明：${a.completion_note?.slice(0,50) || '—'}${(a.completion_note?.length||0)>50?'...':''}</span>
+          </div>
+        </div>
+        <span class="badge badge-purple">待結案</span>
+      </div>
+      <div class="approval-actions" style="margin-top:10px">
+        <button class="btn btn-ghost btn-sm" onclick="viewAnomaly(${a.id})">📋 查看詳情</button>
+        <button class="btn btn-green btn-sm" onclick="quickCloseAnomaly(${a.id})">✅ 快速結案</button>
+        <button class="btn btn-red btn-sm" onclick="quickRejectAnomaly(${a.id})">❌ 退回</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function quickCloseAnomaly(id) {
+  const { error } = await db.from('anomalies').update({ status: '已結案' }).eq('id', id);
+  if (error) { showToast('❌ 操作失敗', 'err'); return; }
+  await loadAnomalies(); await loadApprovals();
+  showToast('✅ 已結案');
+}
+
+async function quickRejectAnomaly(id) {
+  const reason = prompt('請輸入退回原因：');
+  if (reason === null) return;
+  const { error } = await db.from('anomalies').update({ status: '退回處理中', reject_reason: reason || '請重新確認並處理' }).eq('id', id);
+  if (error) { showToast('❌ 操作失敗', 'err'); return; }
+  await loadAnomalies(); await loadApprovals();
+  showToast('已退回，同仁需重新處理');
+}
+
 function renderApprovalList(items) {
   const list = document.getElementById('approvalList');
   if (!list) return;
@@ -1296,22 +1440,23 @@ function renderApprovalList(items) {
 function renderChangeRequestList(items) {
   const list = document.getElementById('changeRequestList');
   if (!list) return;
-  if (!items.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>目前無改期申請</p></div>'; return; }
+  if (!items.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><p>目前無改期／重新指派申請</p></div>'; return; }
+  const typeLabel = { reschedule: '🔄 改期申請', reassign: '⏰ 逾期重新指派申請' };
   list.innerHTML = items.map(r => `
     <div class="approval-card">
       <div class="approval-card-header">
         <div style="flex:1">
-          <div class="approval-title">改期申請 #${r.schedule_id}</div>
+          <div class="approval-title">${typeLabel[r.request_type] || r.request_type} #${r.schedule_id}</div>
           <div class="approval-meta">
             申請人：${r.requested_by}<br>
-            原日期：${r.old_date || '—'} → 新日期：${r.new_date}<br>
+            原日期：${r.old_date || '—'} → 新日期：<strong style="color:var(--accent)">${r.new_date}</strong><br>
             原因：${r.reason}
           </div>
         </div>
         <span class="badge badge-yellow">待審核</span>
       </div>
       <div class="approval-actions">
-        <button class="btn btn-green btn-sm" onclick="approveChange(${r.id},${r.schedule_id},'${r.new_date}')">✅ 核可</button>
+        <button class="btn btn-green btn-sm" onclick="approveChange(${r.id},${r.schedule_id},'${r.new_date}','${r.request_type}')">✅ 核可</button>
         <button class="btn btn-red btn-sm" onclick="rejectChange(${r.id})">❌ 退回</button>
       </div>
     </div>
@@ -1344,7 +1489,7 @@ function renderOverdueList(items) {
 // ══════════════════════════════════════
 function renderAnomalies() {
   const sevMap = { low:{l:'輕微',c:'badge-yellow'}, mid:{l:'中度',c:'badge-orange'}, high:{l:'嚴重',c:'badge-red'} };
-  const stMap = {'處理中':'badge-blue','待處理':'badge-red','已結案':'badge-green'};
+  const stMap = {'處理中':'badge-blue','待處理':'badge-red','已完成':'badge-purple','已結案':'badge-green','退回處理中':'badge-orange'};
   const tbody = document.getElementById('anomalyList');
   if (!tbody) return;
   if (!S.anomalies.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">目前無異常記錄</td></tr>'; return; }
@@ -1358,21 +1503,30 @@ function renderAnomalies() {
     </tr>
   `).join('');
   const badge = document.getElementById('anomalyBadge');
-  if (badge) { const p = S.anomalies.filter(a => a.status==='待處理').length; badge.textContent=p; badge.style.display=p?'':'none'; }
+  if (badge) { const p = S.anomalies.filter(a => ['待處理','退回處理中'].includes(a.status)).length; badge.textContent=p; badge.style.display=p?'':'none'; }
 }
 
 function renderAllAnomalies() {
   const sevMap = { low:{l:'輕微',c:'badge-yellow'}, mid:{l:'中度',c:'badge-orange'}, high:{l:'嚴重',c:'badge-red'} };
-  const stMap = {'處理中':'badge-blue','待處理':'badge-red','已結案':'badge-green'};
+  const stMap = {'處理中':'badge-blue','待處理':'badge-red','已完成':'badge-purple','已結案':'badge-green','退回處理中':'badge-orange'};
   const tbody = document.getElementById('allAnomalyList');
   if (!tbody) return;
   if (!S.anomalies.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">無異常記錄</td></tr>'; return; }
-  tbody.innerHTML = S.anomalies.map(a => `
-    <tr>
+  // 「已完成」排最前面，提醒管理者簽核
+  const sorted = [...S.anomalies].sort((a, b) => {
+    if (a.status === '已完成' && b.status !== '已完成') return -1;
+    if (a.status !== '已完成' && b.status === '已完成') return 1;
+    return 0;
+  });
+  tbody.innerHTML = sorted.map(a => `
+    <tr ${a.status === '已完成' ? 'style="background:rgba(163,113,247,.06)"' : ''}>
       <td class="mono" style="font-size:11px">${a.created_at ? new Date(a.created_at).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '-'}</td>
       <td>${a.reported_by||'-'}</td><td>${a.location}</td><td>${a.type}</td>
       <td><span class="badge ${sevMap[a.severity]?.c||'badge-gray'}">${sevMap[a.severity]?.l||a.severity}</span></td>
-      <td><span class="badge ${stMap[a.status]||'badge-gray'}">${a.status}</span></td>
+      <td>
+        <span class="badge ${stMap[a.status]||'badge-gray'}">${a.status}</span>
+        ${a.status === '已完成' ? `<div style="font-size:11px;color:var(--purple);margin-top:3px">⚠️ 待您結案</div>` : ''}
+      </td>
       <td><button class="btn btn-ghost btn-sm" onclick="viewAnomaly(${a.id})">查看</button></td>
     </tr>
   `).join('');
@@ -1399,17 +1553,21 @@ function renderLocations() {
   if (!list) return;
   if (!S.locations.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">📍</div><p>尚無巡檢地點</p></div>'; return; }
   list.innerHTML = S.locations.map(l => `
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border2)">
-      <div style="width:36px;height:36px;border-radius:10px;background:rgba(240,165,0,.1);display:flex;align-items:center;justify-content:center;font-size:17px">📍</div>
-      <div style="flex:1">
-        <div style="font-weight:700;font-size:14px">${l.name}</div>
-        <div style="font-size:12px;color:var(--text2)"><span class="badge badge-gray" style="font-size:11px">${l.building}</span> ${l.floor||''} ${l.description||''}</div>
-        <div style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace">ID: ${l.id}</div>
+    <div style="padding:12px 0;border-bottom:1px solid var(--border2)">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:36px;height:36px;border-radius:10px;background:rgba(240,165,0,.1);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">📍</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14px">${l.name}</div>
+          <div style="font-size:12px;color:var(--text2)"><span class="badge badge-gray" style="font-size:11px">${l.building}</span> ${l.floor||''} ${l.description||''}</div>
+          <div style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace">ID: ${l.id}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-ghost btn-sm" onclick="showQRModal('${l.id}')">🔲 QR</button>
+          <button class="icon-btn edit" onclick="startEditLocation('${l.id}')">✏️</button>
+          <button class="icon-btn del" onclick="removeLocation('${l.id}')">🗑</button>
+        </div>
       </div>
-      <div style="display:flex;gap:6px">
-        <button class="btn btn-ghost btn-sm" onclick="showQRModal('${l.id}')">🔲 QR</button>
-        <button class="icon-btn del" onclick="removeLocation('${l.id}')">🗑</button>
-      </div>
+      <div id="loc_edit_${l.id}"></div>
     </div>
   `).join('');
 }
@@ -1522,10 +1680,13 @@ function renderAtypeMgmt() {
   if (!el) return;
   if (!S.atypes.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>尚無異常類別</p></div>'; return; }
   el.innerHTML = S.atypes.map(a => `
-    <div class="atype-row">
-      <span style="font-size:20px">${a.icon||'📌'}</span>
-      <span style="flex:1;font-size:14px;font-weight:600">${a.name}</span>
-      <button class="icon-btn del" onclick="deleteAtype(${a.id})">🗑</button>
+    <div style="margin-bottom:8px">
+      <div class="atype-row" id="atype_edit_${a.id}">
+        <span style="font-size:20px">${a.icon||'📌'}</span>
+        <span style="flex:1;font-size:14px;font-weight:600">${a.name}</span>
+        <button class="icon-btn edit" onclick="startEditAtype(${a.id})">✏️</button>
+        <button class="icon-btn del" onclick="deleteAtype(${a.id})">🗑</button>
+      </div>
     </div>
   `).join('');
 }
@@ -1608,7 +1769,9 @@ function processScan(locId) {
   const last = S.lastScan[locId] || 0;
   if (now - last < 30 * 60000 && last > 0) { showToast(`⚠️ ${Math.floor((now - last) / 60000)} 分鐘前已掃描此地點`, 'warn'); return; }
   S.lastScan[locId] = now;
-  const task = S.tasks.find(t => t.location === loc.name && t.status !== 'done');
+  // 用 location_id 精確比對，避免地點名稱相似時抓錯
+  const task = S.tasks.find(t => t.location_id === locId && t.status !== 'done')
+    || S.tasks.find(t => t.location === loc.name && t.status !== 'done');
   if (!task) { showToast('✅ 此地點今日已完成', 'ok'); return; }
   S.selectedTask = task;
   openChecklist(task.id, true);
@@ -1737,7 +1900,10 @@ async function addSchedule() {
   if (!isManager) {
     const titleStr = insertData.title;
     showToast('✅ 排程申請已送出，等待管理者審核', 'ok');
-    await sendLineNotify(`📅 新排程申請\n申請人：${S.currentUser}\n標題：${titleStr}\n類型：${type === 'weekly' ? '週巡檢' : type === 'monthly_date' ? '每月固定日' : '指定日期'}`, 'schedule_request');
+    await sendEmailNotify('schedule_request', `排程申請：${titleStr}`,
+      `申請人：${S.currentUser}\n標題：${titleStr}\n類型：${type === 'weekly' ? '週巡檢' : type === 'monthly_date' ? '每月固定日' : '指定日期'}\n\n請至系統「待審核」頁面進行審核。`,
+      S.currentUser
+    );
   } else {
     showToast('✅ 排程新增成功！');
   }
@@ -1774,6 +1940,194 @@ async function reassignOverdue(id) {
   await loadSchedules(); loadOverdueSchedules(); showToast('✅ 已重新指派');
 }
 
+async function deleteSchedule(id) {
+  const sched = S.schedules.find(s => s.id === id);
+  if (!sched) return;
+  if (!confirm(`確定刪除排程「${sched.title}」？\n刪除後無法復原。`)) return;
+  // 先刪除相關的改期申請記錄，避免外鍵約束錯誤
+  await db.from('schedule_change_requests').delete().eq('schedule_id', id);
+  const { error } = await db.from('schedules').delete().eq('id', id);
+  if (error) { showToast('❌ 刪除失敗：' + error.message, 'err'); return; }
+  S.schedules = S.schedules.filter(s => s.id !== id);
+  renderMySchedules(); buildTodayTasks();
+  showToast('✅ 排程已刪除');
+}
+
+// ── 重新指派申請（逾期排程） ──
+function openReassignRequest(schedId) {
+  const sched = S.schedules.find(s => s.id === schedId);
+  if (!sched) return;
+  S.changeRequestingSchedId = schedId;
+  document.getElementById('reassignRequestInfo').innerHTML = `
+    <strong>${sched.title}</strong><br>
+    原完成期限：${sched.specific_date || `每月${sched.monthly_day}號`}<br>
+    負責人：${sched.staff}
+  `;
+  document.getElementById('reassign_new_date').value = '';
+  document.getElementById('reassign_reason').value = '';
+  openModal('reassignRequestModal');
+}
+
+async function submitReassignRequest() {
+  const id = S.changeRequestingSchedId;
+  const newDate = document.getElementById('reassign_new_date').value;
+  const reason = document.getElementById('reassign_reason').value.trim();
+  if (!newDate || !reason) { showToast('請填寫新日期和原因', 'warn'); return; }
+  const sched = S.schedules.find(s => s.id === id);
+  const btn = document.getElementById('reassignSubmitBtn'); btn.disabled = true;
+  const { error } = await db.from('schedule_change_requests').insert({
+    schedule_id: id,
+    request_type: 'reassign',
+    requested_by: S.currentUser,
+    old_date: sched?.specific_date || `每月${sched?.monthly_day}號`,
+    new_date: newDate,
+    reason,
+    status: 'pending',
+  });
+  btn.disabled = false;
+  if (error) { showToast('❌ 提交失敗：' + error.message, 'err'); return; }
+  closeModal('reassignRequestModal');
+  showToast('✅ 重新指派申請已送出，等待管理者審核', 'ok');
+  await sendEmailNotify('schedule_request',
+    `🔄 排程重新指派申請：${sched?.title}`,
+    `申請人：${S.currentUser}\n排程：${sched?.title}\n原期限：${sched?.specific_date || `每月${sched?.monthly_day}號`}\n新日期：${newDate}\n\n申請原因：\n${reason}\n\n請至系統「待審核」頁面處理。`,
+    S.currentUser
+  );
+}
+
+// ── 排程編輯 ──
+function openEditSchedule(id) {
+  const s = S.schedules.find(x => x.id === id);
+  if (!s) return;
+  S._editingSchedId = id;
+  const staffOpts = S.staffList.filter(x => x.active).map(x => `<option value="${x.name}" ${x.name===s.staff?'selected':''}>${x.name}</option>`).join('');
+  const tmplOpts = S.templates.map(t => `<option value="${t.name}" ${t.name===s.template?'selected':''}>${t.name}</option>`).join('');
+  let extraHtml = '';
+  if (s.schedule_type === 'weekly') {
+    const locOpts = S.locations.map(l => `<option value="${l.id}" ${l.id===s.location_id?'selected':''}>${l.name} (${l.building})</option>`).join('');
+    extraHtml = `
+      <div class="form-group"><label class="form-label">巡檢地點</label><select class="form-control" id="es_location">${locOpts}</select></div>
+      <div class="form-group"><label class="form-label">執行週期</label>
+        <select class="form-control" id="es_cycle">
+          <option value="1" ${s.weekday==1?'selected':''}>每週</option>
+          <option value="2" ${s.weekday==2?'selected':''}>每兩週</option>
+          <option value="4" ${s.weekday==4?'selected':''}>每月</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">開始時間</label><input type="time" class="form-control" id="es_start" value="${s.start_time||'08:00'}"></div>
+        <div class="form-group"><label class="form-label">結束時間</label><input type="time" class="form-control" id="es_end" value="${s.end_time||'17:00'}"></div>
+      </div>
+      <div class="form-group"><label class="form-label">巡檢範本</label><select class="form-control" id="es_template">${tmplOpts}</select></div>`;
+  } else if (s.schedule_type === 'monthly_date') {
+    const dayOpts = Array.from({length:31},(_,i)=>`<option value="${i+1}" ${s.monthly_day==i+1?'selected':''}>${i+1}號</option>`).join('');
+    extraHtml = `
+      <div class="form-group"><label class="form-label">排程標題</label><input type="text" class="form-control" id="es_title" value="${s.title||''}"></div>
+      <div class="form-group"><label class="form-label">每月幾號前完成</label><select class="form-control" id="es_monthly_day">${dayOpts}</select></div>
+      <div class="form-group"><label class="form-label">備註說明</label><textarea class="form-control" id="es_note" style="min-height:60px">${s.note||''}</textarea></div>`;
+  } else {
+    extraHtml = `
+      <div class="form-group"><label class="form-label">排程標題</label><input type="text" class="form-control" id="es_title" value="${s.title||''}"></div>
+      <div class="form-group"><label class="form-label">指定日期</label><input type="date" class="form-control" id="es_date" value="${s.specific_date||''}"></div>
+      <div class="form-group"><label class="form-label">備註說明</label><textarea class="form-control" id="es_note" style="min-height:60px">${s.note||''}</textarea></div>`;
+  }
+  document.getElementById('editScheduleBody').innerHTML = `
+    <div class="alert alert-info" style="margin-bottom:14px;font-size:12px">✏️ 編輯後立即生效，所有人員介面同步更新</div>
+    ${extraHtml}
+    <div class="form-group"><label class="form-label">負責人</label><select class="form-control" id="es_staff">${staffOpts}</select></div>`;
+  openModal('editScheduleModal');
+}
+
+async function saveScheduleEdit() {
+  const id = S._editingSchedId;
+  const s = S.schedules.find(x => x.id === id);
+  if (!s) return;
+  const btn = document.getElementById('saveScheduleBtn'); btn.disabled = true; btn.textContent = '儲存中...';
+  let updates = { staff: document.getElementById('es_staff')?.value };
+  if (s.schedule_type === 'weekly') {
+    const locId = document.getElementById('es_location')?.value;
+    const loc = S.locations.find(l => l.id === locId);
+    updates = { ...updates, location_id: locId, location_name: loc?.name, warehouse: loc?.building,
+      weekday: parseInt(document.getElementById('es_cycle')?.value||1),
+      start_time: document.getElementById('es_start')?.value,
+      end_time: document.getElementById('es_end')?.value,
+      template: document.getElementById('es_template')?.value };
+  } else if (s.schedule_type === 'monthly_date') {
+    updates = { ...updates, title: document.getElementById('es_title')?.value,
+      monthly_day: parseInt(document.getElementById('es_monthly_day')?.value),
+      note: document.getElementById('es_note')?.value };
+  } else {
+    updates = { ...updates, title: document.getElementById('es_title')?.value,
+      specific_date: document.getElementById('es_date')?.value,
+      note: document.getElementById('es_note')?.value };
+  }
+  const { error } = await db.from('schedules').update(updates).eq('id', id);
+  btn.disabled = false; btn.textContent = '💾 儲存變更';
+  if (error) { showToast('❌ 儲存失敗：' + error.message, 'err'); return; }
+  await loadSchedules(); closeModal('editScheduleModal');
+  showToast('✅ 排程已更新，所有人員介面同步！');
+}
+
+// ── 巡檢地點編輯 ──
+function startEditLocation(id) {
+  const loc = S.locations.find(l => l.id === id);
+  if (!loc) return;
+  const warehouseOpts = ['大溪倉','新光倉','新光二倉','大肚倉','岡山倉'].map(w=>`<option ${w===loc.building?'selected':''}>${w}</option>`).join('');
+  const el = document.getElementById('loc_edit_'+id);
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:8px;padding:12px;background:var(--bg);border-radius:8px;border:1px solid var(--accent);margin-top:8px">
+      <div class="form-row">
+        <div><label class="form-label">地點名稱</label><input type="text" class="form-control" id="le_name_${id}" value="${loc.name}"></div>
+        <div><label class="form-label">倉別</label><select class="form-control" id="le_building_${id}">${warehouseOpts}</select></div>
+      </div>
+      <div class="form-row">
+        <div><label class="form-label">樓層</label><input type="text" class="form-control" id="le_floor_${id}" value="${loc.floor||''}"></div>
+        <div><label class="form-label">描述</label><input type="text" class="form-control" id="le_desc_${id}" value="${loc.description||''}"></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-green btn-sm" style="flex:1" onclick="saveLocationEdit('${id}')">💾 儲存</button>
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="renderLocations()">取消</button>
+      </div>
+    </div>`;
+}
+
+async function saveLocationEdit(id) {
+  const name = document.getElementById('le_name_'+id)?.value.trim();
+  if (!name) { showToast('請輸入地點名稱','warn'); return; }
+  const { error } = await db.from('locations').update({
+    name, building: document.getElementById('le_building_'+id)?.value,
+    floor: document.getElementById('le_floor_'+id)?.value,
+    description: document.getElementById('le_desc_'+id)?.value,
+  }).eq('id', id);
+  if (error) { showToast('❌ 儲存失敗：'+error.message,'err'); return; }
+  await loadLocations(); showToast('✅ 地點已更新！');
+}
+
+// ── 異常類別編輯 ──
+function startEditAtype(id) {
+  const a = S.atypes.find(x => x.id === id);
+  if (!a) return;
+  const el = document.getElementById('atype_edit_'+id);
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;padding:8px;background:var(--bg);border-radius:8px;border:1px solid var(--accent)">
+      <input type="text" class="form-control" id="ae_icon_${id}" value="${a.icon||'📌'}" maxlength="2" style="width:54px;text-align:center;font-size:18px;flex-shrink:0">
+      <input type="text" class="form-control" id="ae_name_${id}" value="${a.name}" placeholder="類別名稱" style="flex:1">
+      <button class="icon-btn save" onclick="saveAtypeEdit(${id})">✓</button>
+      <button class="icon-btn del" onclick="renderAtypeMgmt()">✕</button>
+    </div>`;
+}
+
+async function saveAtypeEdit(id) {
+  const name = document.getElementById('ae_name_'+id)?.value.trim();
+  const icon = document.getElementById('ae_icon_'+id)?.value.trim()||'📌';
+  if (!name) { showToast('請輸入類別名稱','warn'); return; }
+  const { error } = await db.from('anomaly_types').update({ name, icon }).eq('id', id);
+  if (error) { showToast('❌ 儲存失敗','err'); return; }
+  await loadAtypes(); showToast('✅ 類別已更新！');
+}
+
 // ══════════════════════════════════════
 //  CHANGE REQUEST
 // ══════════════════════════════════════
@@ -1806,14 +2160,23 @@ async function submitChangeRequest() {
   if (error) { showToast('❌ 提交失敗：' + error.message, 'err'); return; }
   closeModal('changeRequestModal');
   showToast('✅ 改期申請已送出，等待管理者審核', 'ok');
-  await sendLineNotify(`🔄 改期申請\n申請人：${S.currentUser}\n排程：${sched?.title}\n新日期：${newDate}\n原因：${reason}`, 'schedule_request');
+  await sendEmailNotify('change_request', `改期申請：${sched?.title}`,
+    `申請人：${S.currentUser}\n排程：${sched?.title}\n原日期：${sched?.specific_date || '—'}\n新日期：${newDate}\n\n改期原因：\n${reason}\n\n請至系統「待審核」頁面進行審核。`,
+    S.currentUser
+  );
 }
 
-async function approveChange(requestId, schedId, newDate) {
-  const { error: e1 } = await db.from('schedules').update({ specific_date: newDate }).eq('id', schedId);
-  const { error: e2 } = await db.from('schedule_change_requests').update({ status: 'approved', reviewed_by: ADMIN_NAME, reviewed_at: new Date().toISOString() }).eq('id', requestId);
+async function approveChange(requestId, schedId, newDate, requestType = 'reschedule') {
+  // 更新排程：改日期，若是重新指派則從 overdue 恢復為 active
+  const schedUpdate = { specific_date: newDate };
+  if (requestType === 'reassign') schedUpdate.status = 'active';
+  const { error: e1 } = await db.from('schedules').update(schedUpdate).eq('id', schedId);
+  const { error: e2 } = await db.from('schedule_change_requests').update({
+    status: 'approved', reviewed_by: ADMIN_NAME, reviewed_at: new Date().toISOString()
+  }).eq('id', requestId);
   if (e1 || e2) { showToast('操作失敗', 'err'); return; }
-  await loadSchedules(); loadApprovals(); showToast('✅ 改期已核可');
+  await loadSchedules(); loadApprovals();
+  showToast(requestType === 'reassign' ? '✅ 重新指派已核可，排程已恢復' : '✅ 改期已核可');
 }
 
 async function rejectChange(requestId) {
@@ -1898,9 +2261,11 @@ async function submitAnomaly() {
   S.atype = null; S.severity = null;
   await loadAnomalies();
   showToast('✅ 異常報告已提交！', 'ok');
-  // LINE Notify
-  const sevLabel = { low: '🟡輕微', mid: '🟠中度', high: '🔴嚴重' };
-  await sendLineNotify(`⚠️ 異常登記通知\n回報人：${S.currentUser}\n地點：${loc}\n類別：${S.atype || ''}\n程度：${sevLabel[S.severity] || ''}\n描述：${desc}`, 'anomaly');
+  const sevLabel = { low: '🟡 輕微', mid: '🟠 中度', high: '🔴 嚴重' };
+  await sendEmailNotify('anomaly', `異常登記：${loc}`,
+    `地點：${loc}\n類別：${S.atype || ''}\n嚴重程度：${sevLabel[S.severity] || ''}\n\n異常描述：\n${desc}\n\n初步處置：\n${document.getElementById('anomalyAction')?.value || '（未填寫）'}`,
+    S.currentUser
+  );
 }
 
 function viewAnomaly(id) {
@@ -1908,18 +2273,170 @@ function viewAnomaly(id) {
   if (!a) return;
   const sevLabels = { low: '🟡 輕微', mid: '🟠 中度', high: '🔴 嚴重' };
   const isManager = S.currentRole === 'manager';
+  const isOwner = a.reported_by === S.currentUser;
+
+  // 狀態流程說明
+  const flowMap = {
+    '待處理':    { cls:'badge-red',    desc:'等待處理' },
+    '處理中':    { cls:'badge-blue',   desc:'正在處理中' },
+    '已完成':    { cls:'badge-purple', desc:'廠務人員已完成回報，等待管理者結案' },
+    '已結案':    { cls:'badge-green',  desc:'管理者已結案' },
+    '退回處理中':{ cls:'badge-orange', desc:'管理者退回，請重新處理' },
+  };
+  const flow = flowMap[a.status] || { cls:'badge-gray', desc:'' };
+
+  // 廠務人員可執行的操作
+  const staffActions = isOwner && !isManager ? `
+    ${a.status === '待處理' ? `
+      <div class="form-group">
+        <label class="form-label">補充說明</label>
+        <textarea class="form-control" id="anomaly_note_${a.id}" placeholder="補充說明處理進度..." style="min-height:70px"></textarea>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-blue btn-sm" onclick="staffUpdateAnomaly(${a.id},'處理中')">⚙️ 更新為處理中</button>
+      </div>` : ''}
+    ${a.status === '處理中' || a.status === '退回處理中' ? `
+      <div class="form-group">
+        <label class="form-label">完成回報說明 *</label>
+        <textarea class="form-control" id="anomaly_note_${a.id}" placeholder="請說明異常已如何處理完畢..." style="min-height:80px"></textarea>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="staffUpdateAnomaly(${a.id},'處理中')">💬 補充說明</button>
+        <button class="btn btn-green btn-sm" onclick="staffCompleteAnomaly(${a.id})">✅ 回報已完成</button>
+      </div>` : ''}
+    ${a.status === '已完成' ? `<div class="alert alert-success" style="margin-top:8px">✅ 已送出完成回報，等待管理者結案</div>` : ''}
+    ${a.status === '已結案' ? `<div class="alert alert-success" style="margin-top:8px">🎉 此異常已由管理者結案</div>` : ''}
+  ` : '';
+
+  // 管理者可執行的操作（包含自己登記的異常）
+  const managerActions = isManager ? `
+    <div class="form-group" style="margin-top:12px">
+      <label class="form-label">管理者操作</label>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${a.status !== '已結案' ? `
+          <div>
+            <label class="form-label" style="margin-bottom:4px">修改狀態</label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              ${a.status !== '待處理' ? `<button class="btn btn-ghost btn-sm" onclick="managerForceStatus(${a.id},'待處理')">🔴 待處理</button>` : ''}
+              ${a.status !== '處理中' ? `<button class="btn btn-blue btn-sm" onclick="managerForceStatus(${a.id},'處理中')">⚙️ 處理中</button>` : ''}
+            </div>
+          </div>
+          <div>
+            <label class="form-label" style="margin-bottom:4px">結案說明（選填）</label>
+            <textarea class="form-control" id="manager_note_${a.id}" placeholder="結案備註..." style="min-height:60px"></textarea>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-red btn-sm" onclick="managerRejectAnomaly(${a.id})">❌ 退回</button>
+            <button class="btn btn-green btn-sm" onclick="managerCloseAnomaly(${a.id})">✅ 確認結案</button>
+          </div>` : `
+          <div class="alert alert-success" style="margin-bottom:0">🎉 此異常已結案</div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="managerForceStatus(${a.id},'處理中')">↩️ 重新開啟</button>
+        `}
+        <div style="border-top:1px solid var(--border);padding-top:10px">
+          <button class="btn btn-sm" style="background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,.3)" onclick="deleteAnomaly(${a.id})">🗑 刪除此記錄</button>
+        </div>
+      </div>
+    </div>
+  ` : '';
+
   document.getElementById('anomalyDetailBody').innerHTML = `
-    <div style="margin-bottom:14px"><div style="font-size:17px;font-weight:900">${a.location}</div><div style="font-size:13px;color:var(--text2);margin-top:3px">${a.created_at ? new Date(a.created_at).toLocaleString('zh-TW') : ''}</div></div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:17px;font-weight:900">${a.location}</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:3px">${a.created_at ? new Date(a.created_at).toLocaleString('zh-TW') : ''}</div>
+      <span class="badge ${flow.cls}" style="margin-top:6px">${a.status}</span>
+      ${flow.desc ? `<span style="font-size:12px;color:var(--text2);margin-left:8px">${flow.desc}</span>` : ''}
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
       <div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">類別</div><div style="font-weight:700">${a.type}</div></div>
-      <div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">程度</div><div style="font-weight:700">${sevLabels[a.severity] || a.severity}</div></div>
+      <div style="background:var(--bg3);border-radius:8px;padding:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">程度</div><div style="font-weight:700">${sevLabels[a.severity]||a.severity}</div></div>
     </div>
-    <div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">異常描述</div><div style="font-size:14px;line-height:1.6">${a.description}</div></div>
-    ${a.action_taken ? `<div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">初步處置</div><div style="font-size:14px">${a.action_taken}</div></div>` : ''}
-    <div style="font-size:13px;color:var(--text2);margin-bottom:${isManager ? '14' : '0'}px">回報人員：${a.reported_by || '-'}</div>
-    ${isManager ? `<div class="form-group"><label class="form-label">更新狀態</label><div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="updateAnomalyStatus(${a.id},'處理中')">⚙️ 處理中</button><button class="btn btn-green btn-sm" onclick="updateAnomalyStatus(${a.id},'已結案')">✅ 結案</button></div></div>` : ''}
+    <div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:10px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px">異常描述</div>
+      <div style="font-size:14px;line-height:1.6">${a.description}</div>
+    </div>
+    ${a.action_taken ? `<div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:10px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">初步處置</div><div style="font-size:14px">${a.action_taken}</div></div>` : ''}
+    ${a.completion_note ? `<div style="background:var(--green-bg);border:1px solid var(--green);border-radius:8px;padding:14px;margin-bottom:10px"><div style="font-size:11px;color:var(--green);margin-bottom:6px">✅ 完成回報說明</div><div style="font-size:14px">${a.completion_note}</div></div>` : ''}
+    ${a.manager_note ? `<div style="background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;padding:14px;margin-bottom:10px"><div style="font-size:11px;color:var(--blue);margin-bottom:6px">👑 管理者備註</div><div style="font-size:14px">${a.manager_note}</div></div>` : ''}
+    ${a.reject_reason ? `<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:8px;padding:14px;margin-bottom:10px"><div style="font-size:11px;color:var(--red);margin-bottom:6px">❌ 退回原因</div><div style="font-size:14px">${a.reject_reason}</div></div>` : ''}
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px">回報人員：${a.reported_by||'-'}</div>
+    ${staffActions}
+    ${managerActions}
   `;
   openModal('anomalyDetailModal');
+}
+
+async function staffUpdateAnomaly(id, status) {
+  const note = document.getElementById('anomaly_note_'+id)?.value.trim();
+  const updates = { status };
+  if (note) updates.action_taken = (S.anomalies.find(a=>a.id===id)?.action_taken||'') + (note ? '\n【補充】' + note : '');
+  const { error } = await db.from('anomalies').update(updates).eq('id', id);
+  if (error) { showToast('更新失敗','err'); return; }
+  await loadAnomalies(); closeModal('anomalyDetailModal'); showToast('✅ 已更新狀態');
+}
+
+async function staffCompleteAnomaly(id) {
+  const note = document.getElementById('anomaly_note_'+id)?.value.trim();
+  if (!note) { showToast('⚠️ 請填寫完成回報說明','warn'); return; }
+
+  // 先取得異常資料再更新（避免 loadAnomalies 後找不到）
+  const anomaly = S.anomalies.find(a => a.id === id);
+  const sevLabel = { low: '🟡 輕微', mid: '🟠 中度', high: '🔴 嚴重' };
+
+  const { error } = await db.from('anomalies').update({ status: '已完成', completion_note: note }).eq('id', id);
+  if (error) { showToast('更新失敗','err'); return; }
+  await loadAnomalies(); closeModal('anomalyDetailModal');
+  showToast('✅ 已送出完成回報，等待管理者結案');
+
+  // 發送通知給管理者，需要簽核
+  await sendEmailNotify('anomaly',
+    `⚠️ 異常完成回報，需要您結案確認`,
+    `同仁已完成異常處理，請至系統確認並結案。\n\n` +
+    `━━━━━━━━━━━━━━━━\n` +
+    `📍 異常地點：${anomaly?.location || '—'}\n` +
+    `🏷️ 異常類別：${anomaly?.type || '—'}\n` +
+    `🚨 嚴重程度：${sevLabel[anomaly?.severity] || anomaly?.severity || '—'}\n` +
+    `📋 原始描述：${anomaly?.description || '—'}\n` +
+    `━━━━━━━━━━━━━━━━\n` +
+    `👤 回報人員：${S.currentUser}\n` +
+    `✅ 完成回報說明：\n${note}\n\n` +
+    `請登入系統 → 異常登記 → 查看此異常記錄 → 確認結案或退回。`,
+    S.currentUser
+  );
+}
+
+async function managerUpdateAnomaly(id, status, note) {
+  const { error } = await db.from('anomalies').update({ status, manager_note: note||null }).eq('id', id);
+  if (error) { showToast('更新失敗','err'); return; }
+  await loadAnomalies(); closeModal('anomalyDetailModal'); showToast('✅ 已更新');
+}
+
+async function managerForceStatus(id, status) {
+  const { error } = await db.from('anomalies').update({ status }).eq('id', id);
+  if (error) { showToast('更新失敗','err'); return; }
+  await loadAnomalies(); closeModal('anomalyDetailModal'); showToast('✅ 狀態已更新');
+}
+
+async function deleteAnomaly(id) {
+  const a = S.anomalies.find(x => x.id === id);
+  if (!confirm(`確定刪除異常記錄「${a?.location || ''}」？\n此操作無法復原。`)) return;
+  const { error } = await db.from('anomalies').delete().eq('id', id);
+  if (error) { showToast('❌ 刪除失敗：' + error.message, 'err'); return; }
+  await loadAnomalies(); closeModal('anomalyDetailModal'); showToast('✅ 已刪除異常記錄');
+}
+
+async function managerCloseAnomaly(id) {
+  const note = document.getElementById('manager_note_'+id)?.value.trim();
+  const { error } = await db.from('anomalies').update({ status: '已結案', manager_note: note||null }).eq('id', id);
+  if (error) { showToast('更新失敗','err'); return; }
+  await loadAnomalies(); closeModal('anomalyDetailModal'); showToast('✅ 已結案');
+}
+
+async function managerRejectAnomaly(id) {
+  const reason = prompt('請輸入退回原因（廠務人員將看到此說明）：');
+  if (reason === null) return;
+  const { error } = await db.from('anomalies').update({ status: '退回處理中', reject_reason: reason||'請重新確認並處理' }).eq('id', id);
+  if (error) { showToast('更新失敗','err'); return; }
+  await loadAnomalies(); closeModal('anomalyDetailModal'); showToast('已退回，廠務人員需重新處理');
 }
 
 async function updateAnomalyStatus(id, status) {
@@ -1929,29 +2446,42 @@ async function updateAnomalyStatus(id, status) {
 }
 
 // ══════════════════════════════════════
-//  LINE NOTIFY
+//  EMAIL NOTIFY (EmailJS)
 // ══════════════════════════════════════
-async function sendLineNotify(message, type = 'anomaly') {
-  const token = S.notifySettings?.line_notify_token;
-  if (!token) return; // No token configured
+function initEmailJS() {
+  if (typeof emailjs !== 'undefined') {
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+  }
+}
+
+async function sendEmailNotify(type, title, detail, reporter = '') {
+  if (typeof emailjs === 'undefined') { console.warn('EmailJS not loaded'); return; }
+  // Check notify settings
   const settingKey = type === 'anomaly' ? 'notify_on_anomaly' : type === 'overdue' ? 'notify_on_overdue' : 'notify_on_schedule_request';
-  if (!S.notifySettings[settingKey]) return;
+  if (S.notifySettings && S.notifySettings[settingKey] === false) return;
+
+  const typeLabel = { anomaly: '⚠️ 異常登記', overdue: '⏰ 排程逾期', schedule_request: '📅 排程申請', change_request: '🔄 改期申請' };
+  const now = new Date().toLocaleString('zh-TW');
   try {
-    // Note: Direct LINE Notify calls from browser are blocked by CORS.
-    // In production, this should go through a Supabase Edge Function or backend proxy.
-    // For now, we store pending notifications and show a warning.
-    console.log('LINE Notify:', message);
-    // Store notification in DB for reference
-    await db.from('notification_settings').update({ updated_at: new Date().toISOString() }).eq('id', S.notifySettings.id || 1);
-  } catch (e) { console.error('LINE Notify error:', e); }
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      notification_type: typeLabel[type] || type,
+      title,
+      reporter: reporter || S.currentUser || '—',
+      time: now,
+      detail,
+      to_email: NOTIFY_EMAIL,
+    });
+    console.log('Email 通知已發送');
+  } catch (e) {
+    console.error('Email 通知失敗：', e);
+  }
 }
 
 async function saveNotifySettings() {
-  const token = document.getElementById('lineToken').value.trim();
   const btn = document.getElementById('saveNotifyBtn'); btn.disabled = true;
   const { error } = await db.from('notification_settings').upsert({
     id: S.notifySettings?.id || 1,
-    line_notify_token: token,
+    line_notify_token: '',
     notify_on_anomaly: document.getElementById('notify_anomaly').checked,
     notify_on_overdue: document.getElementById('notify_overdue').checked,
     notify_on_schedule_request: document.getElementById('notify_request').checked,
@@ -1959,14 +2489,16 @@ async function saveNotifySettings() {
   });
   btn.disabled = false;
   if (error) { showToast('❌ 儲存失敗：' + error.message, 'err'); return; }
-  S.notifySettings.line_notify_token = token;
+  S.notifySettings.notify_on_anomaly = document.getElementById('notify_anomaly').checked;
+  S.notifySettings.notify_on_overdue = document.getElementById('notify_overdue').checked;
+  S.notifySettings.notify_on_schedule_request = document.getElementById('notify_request').checked;
   showToast('✅ 通知設定已儲存！');
 }
 
-async function testLineNotify() {
-  const token = document.getElementById('lineToken').value.trim();
-  if (!token) { showToast('⚠️ 請先填入 LINE Notify Token', 'warn'); return; }
-  showToast('📨 LINE Notify 需透過後端伺服器發送，Token 已儲存。請先儲存設定後，由系統在下次異常時自動觸發。', 'warn');
+async function testEmailNotify() {
+  showToast('📨 發送測試信件中...', 'ok');
+  await sendEmailNotify('anomaly', '測試通知', '這是一封測試信件，確認 Email 通知功能正常運作。', ADMIN_NAME);
+  showToast('✅ 測試信件已發送，請確認 ' + NOTIFY_EMAIL + ' 是否收到', 'ok');
 }
 
 // ══════════════════════════════════════
@@ -2133,6 +2665,7 @@ function showToast(msg, type = 'ok') {
 //  INIT
 // ══════════════════════════════════════
 async function initApp() {
+  initEmailJS();
   showLoading('連接資料庫...');
   try {
     await loadLocations();
@@ -2146,6 +2679,13 @@ async function initApp() {
     await loadAnomalies();
     await loadNotifySettings();
     setDbStatus(true);
+    // 管理者登入時自動檢查逾時未處理異常 + 逾期排程
+    if (S.currentRole === 'manager') {
+      setTimeout(async () => {
+        await checkOverdueSchedules();
+        await checkOverdueAnomalies();
+      }, 2000);
+    }
   } catch (e) {
     setDbStatus(false); showToast('資料庫連線異常', 'err');
   }
@@ -2153,9 +2693,149 @@ async function initApp() {
 }
 
 // ══════════════════════════════════════
-//  Supabase: add schedule_id to checkin_records if not exists
+//  OVERDUE SCHEDULE CHECK
 // ══════════════════════════════════════
-initLoginPage();
+async function checkOverdueSchedules() {
+  const today = new Date().toISOString().slice(0, 10);
+
+  // 找所有 active 的 one_time / monthly_date 排程，且日期已過
+  const { data: overdueScheds } = await db.from('schedules')
+    .select('*')
+    .eq('status', 'active')
+    .in('schedule_type', ['one_time', 'monthly_date']);
+
+  if (!overdueScheds || !overdueScheds.length) return;
+
+  const now = new Date();
+  const toMark = [];
+
+  overdueScheds.forEach(s => {
+    if (s.schedule_type === 'one_time') {
+      // 指定日期已過且未完成
+      if (s.specific_date && s.specific_date < today) toMark.push(s);
+    } else if (s.schedule_type === 'monthly_date') {
+      // 每月固定日：本月已過了那天
+      const day = parseInt(s.monthly_day);
+      const thisMonthDeadline = new Date(now.getFullYear(), now.getMonth(), day);
+      // 若今天已超過本月截止日
+      if (now > thisMonthDeadline) {
+        // 確認本月有沒有完成記錄
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const hasDone = S.records.some(r =>
+          r.schedule_id === s.id &&
+          r.checkin_at >= monthStart
+        );
+        if (!hasDone) toMark.push(s);
+      }
+    }
+  });
+
+  if (!toMark.length) return;
+
+  // 批次更新為 overdue
+  const ids = toMark.map(s => s.id);
+  await db.from('schedules').update({ status: 'overdue' }).in('id', ids);
+
+  // 重新載入排程（讓 UI 顯示紅色逾期）
+  await loadSchedules();
+
+  // 發 Email 通知
+  const lines = toMark.map(s => {
+    const deadline = s.schedule_type === 'one_time'
+      ? `指定日期：${s.specific_date}`
+      : `每月 ${s.monthly_day} 號`;
+    return `• ${s.title}（${deadline}）- 負責人：${s.staff}`;
+  }).join('\n');
+
+  await sendEmailNotify('overdue',
+    `📅 ${toMark.length} 筆排程逾期未完成`,
+    `以下排程已超過完成期限，請確認處理狀況：\n\n${lines}\n\n請至系統「我的排程」查看詳情，可手動關閉或重新指派。`,
+    ADMIN_NAME
+  );
+
+  showToast(`⏰ 有 ${toMark.length} 筆排程逾期未完成，已發送 Email 通知`, 'warn');
+}
+
+// ══════════════════════════════════════
+//  OVERDUE ANOMALY CHECK
+// ══════════════════════════════════════
+async function checkOverdueAnomalies() {
+  const now = new Date();
+  const limits = { low: 30, mid: 14, high: 3 }; // days
+  const activeStatuses = ['待處理', '處理中', '退回處理中'];
+
+  // Load all anomalies fresh (no filter)
+  const { data } = await db.from('anomalies').select('*').in('status', activeStatuses);
+  if (!data || !data.length) return;
+
+  const overdue = data.filter(a => {
+    const days = limits[a.severity];
+    if (!days) return false;
+    const created = new Date(a.created_at);
+    const diffDays = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+    return diffDays >= days;
+  });
+
+  if (!overdue.length) return;
+
+  const sevLabel = { low: '🟡輕微', mid: '🟠中度', high: '🔴嚴重' };
+  const lines = overdue.map(a => {
+    const days = Math.floor((now - new Date(a.created_at)) / (1000 * 60 * 60 * 24));
+    return `• [${sevLabel[a.severity]}] ${a.location} - ${a.type}\n  狀態：${a.status}｜已逾 ${days} 天未結案`;
+  }).join('\n');
+
+  await sendEmailNotify('overdue',
+    `⚠️ ${overdue.length} 筆異常逾時未處理`,
+    `以下異常記錄已超過處理期限，請儘速處理：\n\n${lines}\n\n逾時標準：\n• 輕微：30天｜中度：14天｜嚴重：3天`,
+    ADMIN_NAME
+  );
+
+  showToast(`⚠️ 有 ${overdue.length} 筆異常逾時未處理，已發送 Email 提醒`, 'warn');
+}
+
+// ══════════════════════════════════════
+//  ANOMALY EXPORT
+// ══════════════════════════════════════
+async function exportAnomalyCSV() {
+  // 管理者載全部，廠務人員載自己的
+  let q = db.from('anomalies').select('*').order('created_at', { ascending: false });
+  if (S.currentRole !== 'manager') q = q.eq('reported_by', S.currentUser);
+  const { data } = await q;
+  if (!data || !data.length) { showToast('⚠️ 尚無異常記錄可匯出', 'warn'); return; }
+
+  const sevLabel = { low: '輕微', mid: '中度', high: '嚴重' };
+  const rows = [['登記時間', '回報人', '地點', '類別', '嚴重程度', '異常描述', '初步處置', '完成說明', '管理者備註', '退回原因', '狀態']];
+  data.forEach(a => rows.push([
+    a.created_at ? new Date(a.created_at).toLocaleString('zh-TW') : '',
+    a.reported_by || '',
+    a.location || '',
+    a.type || '',
+    sevLabel[a.severity] || a.severity || '',
+    a.description || '',
+    a.action_taken || '',
+    a.completion_note || '',
+    a.manager_note || '',
+    a.reject_reason || '',
+    a.status || '',
+  ]));
+
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = '異常記錄_' + new Date().toLocaleDateString('zh-TW').replace(/\//g, '-') + '.csv';
+  a.click();
+  showToast('✅ 異常記錄已匯出');
+}
+
+// ══════════════════════════════════════
+//  START
+// ══════════════════════════════════════
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initLoginPage);
+} else {
+  // 稍微延遲確保 Supabase SDK 完全就緒
+  setTimeout(initLoginPage, 100);
+}
 </script>
 </body>
 </html>
