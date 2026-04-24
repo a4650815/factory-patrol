@@ -308,6 +308,20 @@ tr:last-child td{border-bottom:none;}
 #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,.4);display:none;white-space:nowrap;max-width:90%;}
 #toast.show{display:block;animation:slideUp .3s ease;}
 @keyframes slideUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+/* STAFF WEEKLY OVERVIEW */
+.staff-week-card{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.staff-week-card:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.3);}
+.staff-week-card.active{border-color:var(--accent);background:rgba(240,165,0,.06);}
+.staff-week-card .sw-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#0d1117;margin-bottom:10px;}
+.staff-week-card .sw-name{font-size:13px;font-weight:700;margin-bottom:6px;}
+.staff-week-card .sw-progress{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-bottom:6px;}
+.staff-week-card .sw-progress-fill{height:100%;border-radius:3px;transition:width .5s ease;}
+.staff-week-card .sw-stats{font-size:11px;color:var(--text2);display:flex;justify-content:space-between;align-items:center;}
+.staff-week-card .sw-rate{font-size:16px;font-weight:900;font-family:'JetBrains Mono',monospace;}
+.detail-task-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border2);}
+.detail-task-item:last-child{border-bottom:none;}
+.detail-task-status{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+
 /* SUB TABS */
 .sched-sub-tab{flex-shrink:0;padding:12px 16px;font-size:13px;font-weight:600;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;font-family:inherit;}
 .sched-sub-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
@@ -421,6 +435,32 @@ tr:last-child td{border-bottom:none;}
       <button class="btn btn-ghost hidden" id="simulateScanBtn" onclick="simulateScan()">🔲 模擬掃碼</button>
     </div>
   </div>
+
+  <!-- 人員執行狀況（管理者專屬） -->
+  <div id="staffWeeklyOverview" class="hidden">
+    <div class="card">
+      <div class="card-title">
+        <div class="card-title-left"><div class="section-icon">👥</div><span>本週人員執行狀況</span></div>
+        <div style="font-size:12px;color:var(--text3)" id="weekRangeLabel"></div>
+      </div>
+      <!-- 人員卡片 Grid -->
+      <div id="staffCardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:4px"></div>
+    </div>
+    <!-- 展開明細區域 -->
+    <div id="staffDetailPanel" class="hidden">
+      <div class="card" style="border-color:rgba(240,165,0,.25)">
+        <div class="card-title">
+          <div class="card-title-left">
+            <div class="section-icon" id="staffDetailIcon">👤</div>
+            <span id="staffDetailName">—</span>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="closeStaffDetail()">✕ 關閉</button>
+        </div>
+        <div id="staffDetailList"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="card-title">
       <div class="card-title-left"><div class="section-icon">📋</div><span>今日巡檢任務</span></div>
@@ -1434,6 +1474,7 @@ function buildTodayTasks() {
     };
   });
   renderTasks(); updateProgress();
+  renderStaffWeeklyOverview();
 }
 
 function updateApprovalBadge() {
@@ -1496,8 +1537,159 @@ function updateProgress() {
 //  RENDER MY SCHEDULES
 // ══════════════════════════════════════
 // ══════════════════════════════════════
-//  MY SCHEDULE SUB-TABS
+//  STAFF WEEKLY OVERVIEW（管理者）
 // ══════════════════════════════════════
+function renderStaffWeeklyOverview() {
+  const overview = document.getElementById('staffWeeklyOverview');
+  if (!overview) return;
+  if (S.currentRole !== 'manager') { overview.classList.add('hidden'); return; }
+  overview.classList.remove('hidden');
+
+  // 計算本週範圍（週一到週日）
+  const today = new Date();
+  const dow = today.getDay();
+  const monday = new Date(today); monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  const weekStartStr = monday.toISOString().slice(0, 10);
+  const weekEndStr = sunday.toISOString().slice(0, 10);
+
+  // 週標籤
+  const wLabel = document.getElementById('weekRangeLabel');
+  if (wLabel) wLabel.textContent = `${monday.getMonth()+1}/${monday.getDate()} － ${sunday.getMonth()+1}/${sunday.getDate()}`;
+
+  // 本週打卡記錄
+  const weekRecs = S.records.filter(r => {
+    const d = r.checkin_at?.slice(0, 10);
+    return d >= weekStartStr && d <= weekEndStr;
+  });
+
+  // 週巡檢排程（只看 weekly type + active/overdue）
+  const weeklyScheds = S.schedules.filter(s =>
+    s.schedule_type === 'weekly' && ['active','overdue'].includes(s.status)
+  );
+
+  const grid = document.getElementById('staffCardGrid');
+  if (!grid) return;
+
+  if (!S.staffList.length) {
+    grid.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px">尚無廠務人員</div>';
+    return;
+  }
+
+  grid.innerHTML = S.staffList.filter(s => s.active).map((staff, i) => {
+    // 該人員本週指派的排程數
+    const assigned = weeklyScheds.filter(s => s.staff === staff.name);
+    const total = assigned.length;
+
+    // 本週已完成次數（看打卡記錄）
+    const done = weekRecs.filter(r => r.staff === staff.name).length;
+
+    const rate = total > 0 ? Math.min(100, Math.round(done / total * 100)) : 0;
+    const color = rate === 100 ? '#3fb950' : rate >= 50 ? '#f0a500' : rate > 0 ? '#ff7b33' : '#f85149';
+    const statusLabel = total === 0 ? '無排程' : rate === 100 ? '✅ 全完成' : done === 0 ? '⚠️ 未開始' : '🔄 進行中';
+    const statusCls = rate === 100 ? 'badge-green' : done === 0 && total > 0 ? 'badge-red' : 'badge-yellow';
+    const avatarColor = AVATAR_COLORS[i % AVATAR_COLORS.length];
+
+    return `
+      <div class="staff-week-card" id="swcard_${staff.id}" onclick="toggleStaffDetail('${staff.name}', ${staff.id})">
+        <div class="sw-avatar" style="background:${avatarColor}">${staff.name[0]}</div>
+        <div class="sw-name">${staff.name}</div>
+        <div class="sw-progress">
+          <div class="sw-progress-fill" style="width:${rate}%;background:${color}"></div>
+        </div>
+        <div class="sw-stats">
+          <span>${done}/${total} 完成</span>
+          <span class="sw-rate" style="color:${color}">${rate}%</span>
+        </div>
+        <div style="margin-top:8px"><span class="badge ${statusCls}" style="font-size:11px">${statusLabel}</span></div>
+      </div>`;
+  }).join('');
+
+  // 儲存本週資料供明細使用
+  S._weekRecs = weekRecs;
+  S._weeklyScheds = weeklyScheds;
+  S._weekStartStr = weekStartStr;
+  S._weekEndStr = weekEndStr;
+}
+
+function toggleStaffDetail(staffName, staffId) {
+  const panel = document.getElementById('staffDetailPanel');
+  const prevActive = document.querySelector('.staff-week-card.active');
+  const thisCard = document.getElementById('swcard_' + staffId);
+
+  // 如果點同一個人，收起
+  if (prevActive && prevActive.id === 'swcard_' + staffId) {
+    prevActive.classList.remove('active');
+    panel.classList.add('hidden');
+    return;
+  }
+
+  // 切換 active 狀態
+  document.querySelectorAll('.staff-week-card').forEach(c => c.classList.remove('active'));
+  thisCard?.classList.add('active');
+
+  renderStaffDetail(staffName);
+  panel.classList.remove('hidden');
+
+  // 滑動到明細區域
+  setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+}
+
+function renderStaffDetail(staffName) {
+  const staff = S.staffList.find(s => s.name === staffName);
+  const i = S.staffList.findIndex(s => s.name === staffName);
+  const avatarColor = AVATAR_COLORS[i % AVATAR_COLORS.length];
+
+  document.getElementById('staffDetailIcon').style.background = `rgba(${hexToRgb(avatarColor)}, 0.15)`;
+  document.getElementById('staffDetailIcon').textContent = staffName[0];
+  document.getElementById('staffDetailName').textContent = `${staffName} 的本週任務明細`;
+
+  const assigned = (S._weeklyScheds || []).filter(s => s.staff === staffName);
+  const weekRecs = S._weekRecs || [];
+
+  const list = document.getElementById('staffDetailList');
+  if (!assigned.length) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><p>本週無週巡檢排程</p></div>';
+    return;
+  }
+
+  list.innerHTML = assigned.map(sched => {
+    const isDone = weekRecs.some(r => r.staff === staffName && r.schedule_id === sched.id);
+    const isOverdue = sched.status === 'overdue';
+    const icon = isDone ? '✅' : isOverdue ? '⏰' : '🔲';
+    const bgColor = isDone ? 'var(--green-bg)' : isOverdue ? 'var(--red-bg)' : 'rgba(240,165,0,.08)';
+    const statusBadge = isDone
+      ? `<span class="badge badge-green" style="font-size:11px">已完成</span>`
+      : isOverdue
+        ? `<span class="badge badge-red" style="font-size:11px">逾期</span>`
+        : `<span class="badge badge-yellow" style="font-size:11px">待巡檢</span>`;
+
+    return `
+      <div class="detail-task-item">
+        <div class="detail-task-status" style="background:${bgColor}">${icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700">${sched.title}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">
+            ${sched.location_name && sched.location_name !== '—' ? `📍 ${sched.location_name}` : ''}
+            ${sched.warehouse ? `<span class="badge badge-gray" style="font-size:10px;margin-left:3px">${sched.warehouse}</span>` : ''}
+          </div>
+        </div>
+        ${statusBadge}
+      </div>`;
+  }).join('');
+}
+
+function closeStaffDetail() {
+  document.getElementById('staffDetailPanel')?.classList.add('hidden');
+  document.querySelectorAll('.staff-week-card').forEach(c => c.classList.remove('active'));
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
 S._activeSchedTab = 'weekly';
 
 function switchSchedTab(type) {
