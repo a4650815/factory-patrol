@@ -6,6 +6,7 @@
 <title>廠區巡檢系統</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
 :root{
@@ -306,7 +307,16 @@ tr:last-child td{border-bottom:none;}
 #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,.4);display:none;white-space:nowrap;max-width:90%;}
 #toast.show{display:block;animation:slideUp .3s ease;}
 @keyframes slideUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
-@media(max-width:560px){.stats-grid{grid-template-columns:repeat(2,1fr);}.form-row{grid-template-columns:1fr;}.print-grid{grid-template-columns:repeat(2,1fr);}.staff-grid{grid-template-columns:1fr;}.stype-selector{grid-template-columns:1fr;}}
+/* CHARTS */
+.kpi-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;}
+.kpi-num{font-size:28px;font-weight:900;font-family:'JetBrains Mono',monospace;}
+.kpi-label{font-size:12px;color:var(--text2);margin-top:4px;}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+@media(max-width:900px){#tab-charts .chart-grid{grid-template-columns:repeat(2,1fr)!important;}}
+@media(max-width:560px){
+  #chartKpiRow{grid-template-columns:repeat(2,1fr)!important;}
+  #tab-charts .chart-grid{grid-template-columns:1fr!important;}
+}
 </style>
 </head>
 <body>
@@ -325,7 +335,7 @@ tr:last-child td{border-bottom:none;}
     <div class="admin-lock" id="adminLock">
       <div class="admin-lock-inner">
         <div style="font-size:12px;color:var(--text2);margin-bottom:8px;text-align:center">請輸入管理者密碼</div>
-        <input type="password" id="adminPwd" placeholder="••••" maxlength="6" oninput="this.classList.remove('error')" onkeyup="if(event.key==='Enter')confirmAdmin()">
+        <input type="password" id="adminPwd" placeholder="" maxlength="20" oninput="this.classList.remove('error')" onkeyup="if(event.key==='Enter')confirmAdmin()">
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" style="flex:1" onclick="cancelAdmin()">取消</button>
           <button class="btn btn-accent btn-sm" style="flex:1" onclick="confirmAdmin()">確認登入</button>
@@ -379,6 +389,7 @@ tr:last-child td{border-bottom:none;}
     <button class="nav-tab" onclick="showTab('anomaly')">⚠️ 異常登記 <span class="tab-badge" id="anomalyBadge" style="display:none">0</span></button>
     <button class="nav-tab admin-only" onclick="showTab('approval')">✋ 待審核 <span class="tab-badge" id="approvalBadge" style="display:none">0</span></button>
     <button class="nav-tab admin-only" onclick="showTab('records')">📋 巡檢記錄</button>
+    <button class="nav-tab" onclick="showTab('charts')">📊 數據圖表</button>
     <button class="nav-tab admin-only" onclick="showTab('qrcodes')">🔲 QR Code</button>
     <button class="nav-tab admin-only" onclick="showTab('settings')">⚙️ 系統設定</button>
   </div>
@@ -573,6 +584,13 @@ tr:last-child td{border-bottom:none;}
     </div>
   </div>
 
+  <!-- 修改密碼 -->
+  <div class="card">
+    <div class="card-title"><div class="card-title-left"><div class="section-icon">🔑</div><span>管理者密碼</span></div></div>
+    <div style="font-size:14px;color:var(--text2);margin-bottom:14px">修改管理者登入密碼，修改後立即生效。</div>
+    <button class="btn btn-ghost" onclick="openModal('changePwdModal')">🔑 修改登入密碼</button>
+  </div>
+
   <!-- 廠務人員 -->
   <div class="card">
     <div class="card-title">
@@ -610,6 +628,91 @@ tr:last-child td{border-bottom:none;}
   </div>
 
 </div><!-- end tab-settings -->
+
+<!-- ══ 數據圖表 ══ -->
+<div id="tab-charts" class="tab-content">
+
+  <!-- 篩選列 -->
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="section-icon">🔍</div>
+        <span style="font-size:14px;font-weight:700">篩選條件</span>
+      </div>
+      <button class="btn btn-accent btn-sm" onclick="renderCharts()">🔄 套用篩選</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+      <div style="min-width:130px;flex:1">
+        <label class="form-label">開始日期</label>
+        <input type="date" class="form-control" id="cf_start">
+      </div>
+      <div style="min-width:130px;flex:1">
+        <label class="form-label">結束日期</label>
+        <input type="date" class="form-control" id="cf_end">
+      </div>
+      <div style="min-width:130px;flex:1" id="cf_staff_wrap">
+        <label class="form-label">負責人／回報人</label>
+        <select class="form-control" id="cf_staff"><option value="">全部人員</option></select>
+      </div>
+      <div style="min-width:120px;flex:1">
+        <label class="form-label">異常類別</label>
+        <select class="form-control" id="cf_type"><option value="">全部類別</option></select>
+      </div>
+      <div style="min-width:110px;flex:1">
+        <label class="form-label">嚴重程度</label>
+        <select class="form-control" id="cf_severity">
+          <option value="">全部</option>
+          <option value="low">🟡 輕微</option>
+          <option value="mid">🟠 中度</option>
+          <option value="high">🔴 嚴重</option>
+        </select>
+      </div>
+      <div style="min-width:110px;flex:1">
+        <label class="form-label">異常狀態</label>
+        <select class="form-control" id="cf_status">
+          <option value="">全部</option>
+          <option value="待處理">待處理</option>
+          <option value="處理中">處理中</option>
+          <option value="已完成">已完成</option>
+          <option value="已結案">已結案</option>
+          <option value="退回處理中">退回處理中</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI 數字卡 -->
+  <div id="chartKpiRow" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px"></div>
+
+  <!-- 圖表 Grid：2x2（只剩3個圖表，置中對齊） -->
+  <div class="chart-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+
+    <div class="card" style="margin-bottom:0">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text2)">⚠️ 異常狀態分布</div>
+      <div style="position:relative;height:220px">
+        <canvas id="chartAnomalyStatus"></canvas>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:0">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text2)">🚨 嚴重程度分布</div>
+      <div style="position:relative;height:220px">
+        <canvas id="chartAnomalySev"></canvas>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:0">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;color:var(--text2)">🏷️ 異常類別分布</div>
+      <div style="position:relative;height:220px">
+        <canvas id="chartAnomalyType"></canvas>
+      </div>
+    </div>
+
+  </div>
+  <div style="height:16px"></div>
+
+</div><!-- end tab-charts -->
+
 </div><!-- end .content -->
 </div><!-- end #mainApp -->
 
@@ -762,6 +865,50 @@ tr:last-child td{border-bottom:none;}
       <div style="display:flex;gap:10px">
         <button class="btn btn-ghost" style="flex:1" onclick="closeModal('scheduleModal')">取消</button>
         <button class="btn btn-accent" style="flex:1" id="schedSubmitBtn" onclick="addSchedule()">提交申請</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ KPI 明細 MODAL ══ -->
+<div class="modal-overlay" id="kpiDetailModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 id="kpiDetailTitle">明細</h3>
+      <button class="close-btn" onclick="closeModal('kpiDetailModal')">✕</button>
+    </div>
+    <div class="modal-body" id="kpiDetailBody" style="padding:0"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-block" onclick="closeModal('kpiDetailModal')">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CHANGE PASSWORD MODAL ══ -->
+<div class="modal-overlay" id="changePwdModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header"><h3>🔑 修改管理者密碼</h3><button class="close-btn" onclick="closeModal('changePwdModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="alert alert-warning" style="margin-bottom:16px">⚠️ 修改後請記住新密碼，下次登入需使用新密碼</div>
+      <div class="form-group">
+        <label class="form-label">目前密碼 *</label>
+        <input type="password" class="form-control" id="pwd_current" placeholder="••••">
+      </div>
+      <div class="form-group">
+        <label class="form-label">新密碼 *</label>
+        <input type="password" class="form-control" id="pwd_new" placeholder="請輸入新密碼">
+      </div>
+      <div class="form-group">
+        <label class="form-label">確認新密碼 *</label>
+        <input type="password" class="form-control" id="pwd_confirm" placeholder="再輸入一次新密碼">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" style="flex:1" onclick="closeModal('changePwdModal')">取消</button>
+        <button class="btn btn-accent" style="flex:1" onclick="saveNewPassword()">💾 儲存新密碼</button>
       </div>
     </div>
   </div>
@@ -945,6 +1092,7 @@ const SUPABASE_URL = 'https://xutbrzwhfbahngqfdwum.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_u5fvEpEk9oY8lGpOO4YTAA_R6NcUFO8';
 const ADMIN_PASSWORD = '1234';
 const ADMIN_NAME = '鄧羽廷';
+const SYSTEM_URL = 'https://a4650815.github.io/factory-patrol/';
 const WEEKDAY_NAMES = ['週日','週一','週二','週三','週四','週五','週六'];
 const AVATAR_COLORS = ['#3fb950','#58a6ff','#ff7b33','#a371f7','#f85149','#f0a500','#39c5cf'];
 
@@ -967,7 +1115,7 @@ const S = {
   locations: [], schedules: [], tasks: [], records: [], anomalies: [],
   staffList: [], templates: [], atypes: [],
   editingStaffId: null, selectedSchedType: 'weekly',
-  changeRequestingSchedId: null,
+  changeRequestingSchedId: null, _chartsInited: false,
   notifySettings: { line_notify_token: '', notify_on_anomaly: true, notify_on_overdue: true, notify_on_schedule_request: true },
 };
 
@@ -1010,14 +1158,46 @@ function selectManager() {
   document.getElementById('adminLock').style.display = 'block';
   setTimeout(() => document.getElementById('adminPwd').focus(), 50);
 }
-function cancelAdmin() { document.getElementById('adminLock').style.display = 'none'; document.getElementById('adminPwd').value = ''; }
-function confirmAdmin() {
-  if (document.getElementById('adminPwd').value === ADMIN_PASSWORD) {
+function cancelAdmin() {
+  document.getElementById('adminLock').style.display = 'none';
+  document.getElementById('adminPwd').value = '';
+}
+
+// ══════════════════════════════════════
+//  PASSWORD MANAGEMENT
+// ══════════════════════════════════════
+async function getAdminPassword() {
+  // 從 notification_settings 讀取自訂密碼，沒有則用預設
+  const { data } = await db.from('notification_settings').select('admin_password').limit(1);
+  return data?.[0]?.admin_password || ADMIN_PASSWORD;
+}
+
+async function confirmAdmin() {
+  const input = document.getElementById('adminPwd').value;
+  const correctPwd = await getAdminPassword();
+  if (input === correctPwd) {
     loginAs(ADMIN_NAME, 'manager');
   } else {
-    const inp = document.getElementById('adminPwd'); inp.value = ''; inp.classList.add('error');
+    const inp = document.getElementById('adminPwd');
+    inp.value = ''; inp.classList.add('error');
     showToast('❌ 密碼錯誤', 'err');
   }
+}
+
+async function saveNewPassword() {
+  const current = document.getElementById('pwd_current').value;
+  const newPwd = document.getElementById('pwd_new').value;
+  const confirm = document.getElementById('pwd_confirm').value;
+  if (!current || !newPwd || !confirm) { showToast('請填寫所有欄位', 'warn'); return; }
+  if (newPwd !== confirm) { showToast('⚠️ 兩次輸入的新密碼不一致', 'warn'); return; }
+  if (newPwd.length < 4) { showToast('⚠️ 密碼至少需要 4 位', 'warn'); return; }
+  const correctPwd = await getAdminPassword();
+  if (current !== correctPwd) { showToast('❌ 目前密碼不正確', 'err'); return; }
+  const { error } = await db.from('notification_settings').update({ admin_password: newPwd }).eq('id', S.notifySettings?.id || 1);
+  if (error) { showToast('❌ 儲存失敗：' + error.message, 'err'); return; }
+  ['pwd_current','pwd_new','pwd_confirm'].forEach(id => { const e = document.getElementById(id); if(e) e.value=''; });
+  closeModal('changePwdModal');
+  showToast('✅ 密碼已更新！下次登入請使用新密碼');
 }
 function loginAs(name, role) {
   S.currentUser = name; S.currentRole = role;
@@ -1036,7 +1216,9 @@ function loginAs(name, role) {
   initApp();
 }
 function logout() {
-  S.currentUser = null; S.currentRole = null;
+  S.currentUser = null; S.currentRole = null; S._chartsInited = false;
+  // 銷毀所有圖表實例
+  Object.keys(chartInstances).forEach(k => { try { chartInstances[k].destroy(); } catch(e){} delete chartInstances[k]; });
   document.getElementById('loginScreen').classList.remove('hidden');
   document.getElementById('mainApp').classList.add('hidden');
   showTab('patrol');
@@ -2462,13 +2644,18 @@ async function sendEmailNotify(type, title, detail, reporter = '') {
 
   const typeLabel = { anomaly: '⚠️ 異常登記', overdue: '⏰ 排程逾期', schedule_request: '📅 排程申請', change_request: '🔄 改期申請' };
   const now = new Date().toLocaleString('zh-TW');
+
+  // 統一在結尾加上系統連結
+  const fullDetail = detail +
+    `\n\n━━━━━━━━━━━━━━━━\n🔗 前往系統處理：\n${SYSTEM_URL}\n━━━━━━━━━━━━━━━━\n此信件由廠區巡檢系統自動發送`;
+
   try {
     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       notification_type: typeLabel[type] || type,
       title,
       reporter: reporter || S.currentUser || '—',
       time: now,
-      detail,
+      detail: fullDetail,
       to_email: NOTIFY_EMAIL,
     });
     console.log('Email 通知已發送');
@@ -2631,16 +2818,301 @@ function exportCSV() {
 // ══════════════════════════════════════
 //  UTILS
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+//  CHARTS
+// ══════════════════════════════════════
+const chartInstances = {};
+
+function initChartFilters() {
+  // 預設日期：最近 1 個月
+  const today = new Date();
+  const monthAgo = new Date(today); monthAgo.setMonth(monthAgo.getMonth() - 1);
+  const ef = document.getElementById('cf_end');
+  const sf = document.getElementById('cf_start');
+  if (ef) ef.value = today.toISOString().slice(0, 10);
+  if (sf) sf.value = monthAgo.toISOString().slice(0, 10);
+
+  // 填入人員下拉（廠務人員只顯示自己）
+  const staffSel = document.getElementById('cf_staff');
+  if (staffSel) {
+    if (S.currentRole === 'manager') {
+      staffSel.innerHTML = '<option value="">全部人員</option>' +
+        S.staffList.filter(s => s.active).map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+    } else {
+      staffSel.innerHTML = `<option value="${S.currentUser}">${S.currentUser}</option>`;
+      staffSel.disabled = true;
+    }
+  }
+
+  // 填入異常類別
+  const typeSel = document.getElementById('cf_type');
+  if (typeSel) {
+    typeSel.innerHTML = '<option value="">全部類別</option>' +
+      S.atypes.map(a => `<option value="${a.name}">${a.icon || ''} ${a.name}</option>`).join('');
+  }
+
+  // 廠務人員隱藏全部人員篩選，固定自己
+  const wrap = document.getElementById('cf_staff_wrap');
+  if (wrap && S.currentRole !== 'manager') wrap.style.opacity = '0.5';
+}
+
+function getChartFilters() {
+  const startVal = document.getElementById('cf_start')?.value;
+  const endVal = document.getElementById('cf_end')?.value;
+  const staffVal = S.currentRole !== 'manager' ? S.currentUser : (document.getElementById('cf_staff')?.value || '');
+  return {
+    start: startVal ? new Date(startVal + 'T00:00:00') : null,
+    end: endVal ? new Date(endVal + 'T23:59:59') : null,
+    staff: staffVal,
+    type: document.getElementById('cf_type')?.value || '',
+    severity: document.getElementById('cf_severity')?.value || '',
+    status: document.getElementById('cf_status')?.value || '',
+  };
+}
+
+function filterRecords(f) {
+  return S.records.filter(r => {
+    if (!r.checkin_at) return false;
+    const d = new Date(r.checkin_at);
+    if (f.start && d < f.start) return false;
+    if (f.end && d > f.end) return false;
+    if (f.staff && r.staff !== f.staff) return false;
+    return true;
+  });
+}
+
+function filterAnomalies(f) {
+  return S.anomalies.filter(a => {
+    if (!a.created_at) return false;
+    const d = new Date(a.created_at);
+    if (f.start && d < f.start) return false;
+    if (f.end && d > f.end) return false;
+    if (f.staff && a.reported_by !== f.staff) return false;
+    if (f.type && a.type !== f.type) return false;
+    if (f.severity && a.severity !== f.severity) return false;
+    if (f.status && a.status !== f.status) return false;
+    return true;
+  });
+}
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function chartColors(n) {
+  const palette = ['#f0a500','#3fb950','#58a6ff','#ff7b33','#a371f7','#f85149','#39c5cf','#ffdb58','#7ee787','#79c0ff'];
+  return Array.from({ length: n }, (_, i) => palette[i % palette.length]);
+}
+
+function renderCharts() {
+  // 記住目前 scroll 位置，避免圖表重繪時畫面跳動
+  const scrollY = window.scrollY;
+  const f = getChartFilters();
+  const recs = filterRecords(f);
+  const anoms = filterAnomalies(f);
+
+  renderKpiCards(f, recs, anoms);
+  renderPatrolRateChart(f, recs);
+  renderWeekTrendChart(f, recs);
+  renderAnomalyStatusChart(anoms);
+  renderAnomalySevChart(anoms);
+  renderAnomalyTypeChart(anoms);
+  renderHandleDaysChart(f);
+
+  // 恢復 scroll 位置
+  requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }));
+}
+
+function renderKpiCards(f, recs, anoms) {
+  const row = document.getElementById('chartKpiRow');
+  if (!row) return;
+
+  // 已指派但尚未完成的排程
+  const unfinished = S.schedules.filter(s =>
+    ['active','overdue'].includes(s.status) &&
+    (S.currentRole !== 'manager' ? s.staff === S.currentUser : true)
+  );
+  // 篩選期間內的排程（指定日期在範圍內，或週巡檢/月定期皆算）
+  const unfinishedInRange = unfinished.filter(s => {
+    if (s.schedule_type === 'one_time') {
+      const d = new Date(s.specific_date);
+      if (f.start && d < f.start) return false;
+      if (f.end && d > f.end) return false;
+    }
+    return true;
+  });
+
+  // 未結案異常（在篩選期間內）
+  const unclosed = anoms.filter(a => a.status !== '已結案');
+  const closed = anoms.filter(a => a.status === '已結案').length;
+  const closeRate = anoms.length > 0 ? Math.round(closed / anoms.length * 100) : 0;
+
+  // 巡檢執行率
+  const totalScheds = S.schedules.filter(s => s.schedule_type === 'weekly' && s.active).length;
+  const weeks = f.start && f.end ? Math.max(1, Math.ceil((f.end - f.start) / (7 * 86400000))) : 4;
+  const expected = totalScheds * weeks;
+  const rate = expected > 0 ? Math.min(100, Math.round(recs.length / expected * 100)) : 0;
+
+  row.innerHTML = `
+    <div class="kpi-card" style="cursor:pointer" onclick="showKpiDetail('unfinished')" title="點擊查看明細">
+      <div class="kpi-num" style="color:${unfinishedInRange.length > 0 ? 'var(--orange)' : 'var(--green)'}">${unfinishedInRange.length}</div>
+      <div class="kpi-label">已指派未完成</div>
+      <div class="kpi-sub" style="color:var(--blue)">🔍 點擊查看明細</div>
+    </div>
+    <div class="kpi-card" style="cursor:pointer" onclick="showKpiDetail('unclosed')" title="點擊查看明細">
+      <div class="kpi-num" style="color:${unclosed.length > 0 ? 'var(--red)' : 'var(--green)'}">${unclosed.length}</div>
+      <div class="kpi-label">異常未結案件數</div>
+      <div class="kpi-sub" style="color:var(--blue)">🔍 點擊查看明細</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-num" style="color:${rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--accent)' : 'var(--red)'}">${rate}%</div>
+      <div class="kpi-label">巡檢執行率</div>
+      <div class="kpi-sub">${recs.length} 次完成</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-num" style="color:${closeRate >= 80 ? 'var(--green)' : 'var(--accent)'}">${closeRate}%</div>
+      <div class="kpi-label">異常結案率</div>
+      <div class="kpi-sub">已結案 ${closed} 件</div>
+    </div>
+  `;
+
+  // 儲存資料供明細使用
+  S._kpiUnfinished = unfinishedInRange;
+  S._kpiUnclosed = unclosed;
+}
+
+function showKpiDetail(type) {
+  const sevLabel = { low: '🟡 輕微', mid: '🟠 中度', high: '🔴 嚴重' };
+  const stypeLabel = { weekly: '週巡檢', monthly_date: '月定期', one_time: '指定日期' };
+  const statusColor = { active:'badge-green', overdue:'badge-red', pending_approval:'badge-purple' };
+
+  if (type === 'unfinished') {
+    const items = S._kpiUnfinished || [];
+    document.getElementById('kpiDetailTitle').textContent = `📋 已指派未完成排程（${items.length} 筆）`;
+    document.getElementById('kpiDetailBody').innerHTML = items.length === 0
+      ? '<div class="empty-state"><div class="empty-icon">✅</div><p>目前無未完成排程</p></div>'
+      : items.map(s => `
+        <div style="padding:12px;border-bottom:1px solid var(--border2)">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:14px">${s.title}</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.7">
+                <span class="badge badge-gray" style="font-size:11px">${stypeLabel[s.schedule_type]}</span>
+                ${s.location_name && s.location_name !== '—' ? `&nbsp;📍 ${s.location_name}` : ''}<br>
+                👤 ${s.staff}
+                ${s.schedule_type === 'one_time' ? `&nbsp;|&nbsp; 🗓️ 期限：${s.specific_date}` : ''}
+                ${s.schedule_type === 'monthly_date' ? `&nbsp;|&nbsp; 🗓️ 每月 ${s.monthly_day} 號` : ''}
+              </div>
+            </div>
+            <span class="badge ${statusColor[s.status] || 'badge-gray'}">${s.status === 'overdue' ? '逾期' : '進行中'}</span>
+          </div>
+        </div>`).join('');
+  } else {
+    const items = S._kpiUnclosed || [];
+    document.getElementById('kpiDetailTitle').textContent = `⚠️ 異常未結案記錄（${items.length} 筆）`;
+    document.getElementById('kpiDetailBody').innerHTML = items.length === 0
+      ? '<div class="empty-state"><div class="empty-icon">✅</div><p>目前無未結案異常</p></div>'
+      : items.map(a => `
+        <div style="padding:12px;border-bottom:1px solid var(--border2)">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:14px">${a.location}</div>
+              <div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.7">
+                ${a.type} &nbsp;|&nbsp; ${sevLabel[a.severity] || a.severity}<br>
+                👤 ${a.reported_by || '—'} &nbsp;|&nbsp; ${a.created_at ? new Date(a.created_at).toLocaleDateString('zh-TW') : ''}
+              </div>
+              <div style="font-size:12px;color:var(--text3);margin-top:3px">${a.description?.slice(0,60) || ''}${(a.description?.length||0)>60?'...':''}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+              <span class="badge ${a.status==='待處理'?'badge-red':a.status==='處理中'?'badge-blue':a.status==='已完成'?'badge-purple':'badge-orange'}">${a.status}</span>
+              <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="closeModal('kpiDetailModal');viewAnomaly(${a.id})">查看</button>
+            </div>
+          </div>
+        </div>`).join('');
+  }
+  openModal('kpiDetailModal');
+}
+
+function renderCharts() {
+  const scrollY = window.scrollY;
+  const f = getChartFilters();
+  const recs = filterRecords(f);
+  const anoms = filterAnomalies(f);
+
+  renderKpiCards(f, recs, anoms);
+  renderAnomalyStatusChart(anoms);
+  renderAnomalySevChart(anoms);
+  renderAnomalyTypeChart(anoms);
+
+  requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }));
+}
+
+function renderAnomalyStatusChart(anoms) {
+  destroyChart('anomalyStatus');
+  const canvas = document.getElementById('chartAnomalyStatus');
+  if (!canvas) return;
+  const statuses = ['待處理', '處理中', '退回處理中', '已完成', '已結案'];
+  const counts = statuses.map(s => anoms.filter(a => a.status === s).length);
+  const colors = ['#f85149','#58a6ff','#ff7b33','#a371f7','#3fb950'];
+  chartInstances['anomalyStatus'] = new Chart(canvas, {
+    type: 'pie',
+    data: { labels: statuses, datasets: [{ data: counts, backgroundColor: colors, borderWidth: 2, borderColor: '#161b22' }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: '#8b949e', padding: 8, font: { size: 11 }, boxWidth: 12 } } } }
+  });
+}
+
+function renderAnomalySevChart(anoms) {
+  destroyChart('anomalySev');
+  const canvas = document.getElementById('chartAnomalySev');
+  if (!canvas) return;
+  const labels = ['🟡 輕微', '🟠 中度', '🔴 嚴重'];
+  const keys = ['low', 'mid', 'high'];
+  const counts = keys.map(k => anoms.filter(a => a.severity === k).length);
+  const colors = ['#f0a500', '#ff7b33', '#f85149'];
+  chartInstances['anomalySev'] = new Chart(canvas, {
+    type: 'pie',
+    data: { labels, datasets: [{ data: counts, backgroundColor: colors, borderWidth: 2, borderColor: '#161b22' }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: '#8b949e', padding: 8, font: { size: 11 }, boxWidth: 12 } } } }
+  });
+}
+
+function renderAnomalyTypeChart(anoms) {
+  destroyChart('anomalyType');
+  const canvas = document.getElementById('chartAnomalyType');
+  if (!canvas) return;
+  const typeMap = {};
+  anoms.forEach(a => { typeMap[a.type] = (typeMap[a.type] || 0) + 1; });
+  const labels = Object.keys(typeMap).sort((a, b) => typeMap[b] - typeMap[a]);
+  const counts = labels.map(l => typeMap[l]);
+  const colors = chartColors(labels.length);
+  chartInstances['anomalyType'] = new Chart(canvas, {
+    type: 'pie',
+    data: { labels, datasets: [{ data: counts, backgroundColor: colors.map(c => c + 'cc'), borderColor: '#161b22', borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: '#8b949e', padding: 8, font: { size: 11 }, boxWidth: 12 } } } }
+  });
+}
+
 function showTab(tab) {
   const adminTabs = ['approval', 'records', 'qrcodes', 'settings'];
   if (adminTabs.includes(tab) && S.currentRole !== 'manager') { showToast('⚠️ 此功能僅限管理者', 'warn'); return; }
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
   document.getElementById('tab-' + tab)?.classList.add('active');
-  const tabs = ['patrol', 'my-schedule', 'anomaly', 'approval', 'records', 'qrcodes', 'settings'];
+  const tabs = ['patrol', 'my-schedule', 'anomaly', 'approval', 'records', 'charts', 'qrcodes', 'settings'];
   document.querySelectorAll('.nav-tab')[tabs.indexOf(tab)]?.classList.add('active');
   if (tab === 'approval') { loadApprovals(); loadOverdueSchedules(); loadAnomalies(); }
   if (tab === 'records') { loadRecords(); loadAnomalies(); }
+  if (tab === 'charts') {
+    if (!S._chartsInited) {
+      S._chartsInited = true;
+      initChartFilters();
+      // 等資料齊了再畫，避免空白閃爍
+      setTimeout(renderCharts, 100);
+    }
+  }
   if (tab === 'settings') { loadStaff(); loadTemplates(); loadAtypes(); loadLocations(); loadNotifySettings(); }
   if (tab === 'qrcodes') setTimeout(() => S.locations.forEach(l => {
     const el = document.getElementById('qrthumb_' + l.id);
