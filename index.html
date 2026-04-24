@@ -2000,34 +2000,49 @@ function stopScan() {
 function simulateScan() {
   stopScan();
   if (!S.locations.length) { showToast('尚無巡檢地點', 'warn'); return; }
-  const pending = S.tasks.filter(t => t.status !== 'done');
+  // 找第一個尚未完成的任務，取其 location_id 進行掃描
+  const pending = S.tasks.filter(t => t.status !== 'done' && t.location_id);
   if (!pending.length) { showToast('✅ 今日任務全部完成！', 'ok'); return; }
-  const loc = S.locations.find(l => l.name === pending[0].location) || S.locations[0];
-  processScan(loc.id);
+  processScan(pending[0].location_id);
 }
 function processScan(locId) {
   const loc = S.locations.find(l => l.id === locId);
-  if (!loc) { showToast('❌ 無法識別 QR Code', 'err'); return; }
+  if (!loc) { showToast('❌ 無法識別 QR Code，地點不存在', 'err'); return; }
+
   const now = Date.now();
   const last = S.lastScan[locId] || 0;
-  if (now - last < 30 * 60000 && last > 0) { showToast(`⚠️ ${Math.floor((now - last) / 60000)} 分鐘前已掃描此地點`, 'warn'); return; }
+  if (now - last < 30 * 60000 && last > 0) {
+    showToast(`⚠️ ${Math.floor((now - last) / 60000)} 分鐘前已掃描此地點`, 'warn'); return;
+  }
   S.lastScan[locId] = now;
-  // 用 location_id 精確比對，避免地點名稱相似時抓錯
-  const task = S.tasks.find(t => t.location_id === locId && t.status !== 'done')
-    || S.tasks.find(t => t.location === loc.name && t.status !== 'done');
-  if (!task) { showToast('✅ 此地點今日已完成', 'ok'); return; }
+
+  // 用 location_id 精確比對，找出尚未完成的任務
+  // task.id = schedule id，task.location_id = 地點 id
+  const task = S.tasks.find(t => t.location_id === locId && t.status !== 'done');
+
+  if (!task) {
+    showToast(`✅ ${loc.name} 今日已完成或無排程`, 'ok'); return;
+  }
+
+  // 直接把 task 存入 S.selectedTask，不透過 id 二次查詢
   S.selectedTask = task;
-  openChecklist(task.id, true);
+  openChecklistDirect(task);
 }
 
-// ══════════════════════════════════════
-//  CHECKLIST
-// ══════════════════════════════════════
 function openChecklist(taskId, fromQRScan = false) {
-  if (!fromQRScan && S.currentRole !== 'manager') { showToast('⚠️ 請先到現場掃描 QR Code', 'warn'); return; }
+  // 相容舊呼叫，但廠務人員限制只能透過 QR 進入
+  if (!fromQRScan && S.currentRole !== 'manager') {
+    showToast('⚠️ 請先到現場掃描 QR Code', 'warn'); return;
+  }
+  // 用 schedule id 找 task
   const task = S.tasks.find(t => t.id === taskId);
-  if (!task) return;
+  if (!task) { showToast('找不到對應任務', 'err'); return; }
   S.selectedTask = task;
+  openChecklistDirect(task);
+}
+
+function openChecklistDirect(task) {
+  // 直接使用傳入的 task 物件，不再重新查詢，徹底避免 ID 混淆
   const tmpl = S.templates.find(t => t.name === task.template);
   const items = tmpl?.items || [];
   const ts = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
@@ -2035,11 +2050,16 @@ function openChecklist(taskId, fromQRScan = false) {
   document.getElementById('checklistBody').innerHTML = `
     <div class="alert alert-success" style="margin-bottom:16px">🔲 QR Code 驗證通過 &nbsp;|&nbsp; <strong class="mono">${ts}</strong></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div><div style="font-size:12px;color:var(--text2)">巡檢地點</div><div style="font-weight:700">${task.location}</div></div>
+      <div>
+        <div style="font-size:12px;color:var(--text2)">巡檢地點</div>
+        <div style="font-weight:700;font-size:15px">${task.location}</div>
+      </div>
       <span class="badge badge-gray">${task.warehouse}</span>
     </div>
     <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">✅ 巡檢項目</div>
-    ${items.length ? items.map((item, i) => `<div class="check-item"><input type="checkbox" id="ci_${i}"><label for="ci_${i}">${item}</label></div>`).join('') : '<div style="color:var(--text3);font-size:13px;padding:12px">此範本尚無項目</div>'}
+    ${items.length
+      ? items.map((item, i) => `<div class="check-item"><input type="checkbox" id="ci_${i}"><label for="ci_${i}">${item}</label></div>`).join('')
+      : '<div style="color:var(--text3);font-size:13px;padding:12px">此範本尚無巡檢項目</div>'}
     <div style="margin-top:14px">
       <label class="form-label">巡檢備註</label>
       <textarea class="form-control" id="checkinNote" placeholder="如有異常請描述..." style="min-height:70px"></textarea>
