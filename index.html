@@ -307,6 +307,11 @@ tr:last-child td{border-bottom:none;}
 #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,.4);display:none;white-space:nowrap;max-width:90%;}
 #toast.show{display:block;animation:slideUp .3s ease;}
 @keyframes slideUp{from{transform:translateX(-50%) translateY(20px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1}}
+/* SUB TABS */
+.sched-sub-tab{flex-shrink:0;padding:12px 16px;font-size:13px;font-weight:600;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;font-family:inherit;}
+.sched-sub-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.sched-sub-tab:hover:not(.active){color:var(--text);}
+
 /* CHARTS */
 .kpi-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;}
 .kpi-num{font-size:28px;font-weight:900;font-family:'JetBrains Mono',monospace;}
@@ -335,7 +340,7 @@ tr:last-child td{border-bottom:none;}
     <div class="admin-lock" id="adminLock">
       <div class="admin-lock-inner">
         <div style="font-size:12px;color:var(--text2);margin-bottom:8px;text-align:center">請輸入管理者密碼</div>
-        <input type="password" id="adminPwd" placeholder="" maxlength="20" oninput="this.classList.remove('error')" onkeyup="if(event.key==='Enter')confirmAdmin()">
+        <input type="password" id="adminPwd" placeholder="" maxlength="20" autocomplete="new-password" oninput="this.classList.remove('error')" onkeyup="if(event.key==='Enter')confirmAdmin()">
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" style="flex:1" onclick="cancelAdmin()">取消</button>
           <button class="btn btn-accent btn-sm" style="flex:1" onclick="confirmAdmin()">確認登入</button>
@@ -434,13 +439,31 @@ tr:last-child td{border-bottom:none;}
 
 <!-- ══ 我的排程 ══ -->
 <div id="tab-my-schedule" class="tab-content">
-  <div class="card">
-    <div class="card-title">
-      <div class="card-title-left"><div class="section-icon">📅</div><span>我的排程</span></div>
-      <button class="btn btn-accent btn-sm" onclick="openModal('scheduleModal')">＋ 新增排程</button>
+
+  <!-- 子頁籤列 -->
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden">
+    <div style="display:flex;border-bottom:1px solid var(--border);padding:0 4px">
+      <button class="sched-sub-tab active" id="subtab-btn-weekly" onclick="switchSchedTab('weekly')">
+        📆 週巡檢
+      </button>
+      <button class="sched-sub-tab" id="subtab-btn-monthly_date" onclick="switchSchedTab('monthly_date')">
+        📅 每月固定日
+      </button>
+      <button class="sched-sub-tab" id="subtab-btn-one_time" onclick="switchSchedTab('one_time')">
+        📌 指定日期
+      </button>
+      <div style="flex:1"></div>
+      <div style="display:flex;align-items:center;padding:0 8px">
+        <button class="btn btn-accent btn-sm" onclick="openModal('scheduleModal')">＋ 新增排程</button>
+      </div>
     </div>
-    <div id="myScheduleList"><div class="empty-state"><div class="empty-icon">⏳</div><p>載入中...</p></div></div>
+
+    <!-- 子頁籤內容 -->
+    <div style="padding:16px" id="myScheduleList">
+      <div class="empty-state"><div class="empty-icon">⏳</div><p>載入中...</p></div>
+    </div>
   </div>
+
 </div>
 
 <!-- ══ 異常登記 ══ -->
@@ -1471,12 +1494,56 @@ function updateProgress() {
 // ══════════════════════════════════════
 //  RENDER MY SCHEDULES
 // ══════════════════════════════════════
+// ══════════════════════════════════════
+//  MY SCHEDULE SUB-TABS
+// ══════════════════════════════════════
+S._activeSchedTab = 'weekly';
+
+function switchSchedTab(type) {
+  S._activeSchedTab = type;
+  document.querySelectorAll('.sched-sub-tab').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('subtab-btn-' + type);
+  if (btn) btn.classList.add('active');
+  renderMySchedules();
+}
+
 function renderMySchedules() {
   const list = document.getElementById('myScheduleList');
   if (!list) return;
+  const activeType = S._activeSchedTab || 'weekly';
+
   let scheds = S.schedules;
   if (S.currentRole !== 'manager') scheds = scheds.filter(s => s.staff === S.currentUser);
-  if (!scheds.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><p>尚無排程，點右上角新增</p></div>'; return; }
+
+  // 只顯示目前選中的類型
+  const filtered = scheds.filter(s => s.schedule_type === activeType);
+
+  // 更新子頁籤 badge 數量
+  ['weekly','monthly_date','one_time'].forEach(type => {
+    const btn = document.getElementById('subtab-btn-' + type);
+    if (!btn) return;
+    const count = scheds.filter(s => s.schedule_type === type).length;
+    // 清除舊 badge
+    const old = btn.querySelector('.sub-badge');
+    if (old) old.remove();
+    if (count > 0) {
+      const span = document.createElement('span');
+      span.className = 'sub-badge tab-badge';
+      span.style.marginLeft = '5px';
+      span.textContent = count;
+      btn.appendChild(span);
+    }
+  });
+
+  if (!filtered.length) {
+    const typeLabel = { weekly: '週巡檢', monthly_date: '每月固定日', one_time: '指定日期' };
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📅</div><p>目前無${typeLabel[activeType]}排程</p></div>`;
+    // 更新逾期紅點
+    const myPending = S.schedules.filter(s => s.staff === S.currentUser && s.status === 'overdue').length;
+    const badge = document.getElementById('mySchedBadge');
+    if (badge) { badge.textContent = myPending; badge.style.display = myPending ? '' : 'none'; }
+    return;
+  }
 
   const statusMap = {
     pending_approval: { label: '待核可', cls: 'badge-purple' },
@@ -1484,19 +1551,16 @@ function renderMySchedules() {
     overdue: { label: '逾期', cls: 'badge-red' },
     closed: { label: '已關閉', cls: 'badge-gray' },
   };
-  const stypeLabel = { weekly: '📆 週巡檢', monthly_date: '📅 每月固定日', one_time: '📌 指定日期' };
-  const stypeClass = { weekly: 'stype-weekly', monthly_date: 'stype-monthly', one_time: 'stype-onetime' };
 
-  list.innerHTML = scheds.map(s => {
+  list.innerHTML = filtered.map(s => {
     const sm = statusMap[s.status] || { label: s.status, cls: 'badge-gray' };
     let dateInfo = '';
     if (s.schedule_type === 'weekly') dateInfo = `每隔 ${s.weekday || 1} 週`;
     else if (s.schedule_type === 'monthly_date') dateInfo = `每月 ${s.monthly_day} 號前完成`;
     else if (s.schedule_type === 'one_time') dateInfo = `完成期限：${s.specific_date}`;
 
-    // Task-type (non-weekly) with active status can be completed directly
     const isTaskType = s.schedule_type !== 'weekly';
-    const canComplete = isTaskType && (s.status === 'active') && (S.currentRole !== 'manager' ? s.staff === S.currentUser : true);
+    const canComplete = isTaskType && s.status === 'active' && (S.currentRole !== 'manager' ? s.staff === S.currentUser : true);
     const canReschedule = s.schedule_type === 'one_time' && s.status === 'active' && S.currentRole !== 'manager';
 
     return `
@@ -1505,15 +1569,13 @@ function renderMySchedules() {
           <div style="flex:1;min-width:0">
             <div class="approval-title">${s.title}</div>
             <div class="approval-meta">
-              <span class="stype-tag ${stypeClass[s.schedule_type]}">${stypeLabel[s.schedule_type]}</span>
-              ${s.location_name && s.location_name !== '—' ? `&nbsp;📍 ${s.location_name}` : ''}
+              ${s.location_name && s.location_name !== '—' ? `📍 ${s.location_name}` : ''}
               ${s.warehouse ? `<span class="badge badge-gray" style="font-size:11px;margin-left:4px">${s.warehouse}</span>` : ''}<br>
-              🗓️ ${dateInfo}<br>
-              👤 ${s.staff}
+              🗓️ ${dateInfo} &nbsp;|&nbsp; 👤 ${s.staff}
               ${s.note ? `<br>📝 ${s.note}` : ''}
             </div>
           </div>
-          <span class="badge ${sm.cls}">${sm.label}</span>
+          <span class="badge ${sm.cls}" style="flex-shrink:0">${sm.label}</span>
         </div>
         ${s.status === 'pending_approval' ? `<div class="alert alert-purple" style="margin-bottom:0;margin-top:8px;font-size:12px">⏳ 等待管理者審核中</div>` : ''}
         ${s.status === 'overdue' && S.currentRole !== 'manager' ? `
@@ -1529,8 +1591,7 @@ function renderMySchedules() {
             ${S.currentRole === 'manager' ? `<button class="btn btn-ghost btn-sm" onclick="openEditSchedule(${s.id})">✏️ 編輯</button>` : ''}
             ${S.currentRole === 'manager' ? `<button class="btn btn-sm" style="background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,.3)" onclick="deleteSchedule(${s.id})">🗑 刪除</button>` : ''}
           </div>` : ''}
-      </div>
-    `;
+      </div>`;
   }).join('');
 
   const myPending = S.schedules.filter(s => s.staff === S.currentUser && s.status === 'overdue').length;
