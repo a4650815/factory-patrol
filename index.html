@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
 :root{
@@ -1979,19 +1980,80 @@ function closeQrModal() { document.getElementById('qrDisplayModal').classList.re
 async function startScan() {
   const hint = document.getElementById('scannerHint');
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    S.scanStream = stream; S.scanActive = true;
-    document.getElementById('video-el').srcObject = stream;
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } });
+    S.scanStream = stream;
+    S.scanActive = true;
+    const video = document.getElementById('video-el');
+    video.srcObject = stream;
+    await video.play();
     document.getElementById('viewfinderWrap').classList.add('show');
     document.getElementById('startScanBtn').classList.add('hidden');
     document.getElementById('stopScanBtn').classList.remove('hidden');
     hint.textContent = '📡 對準巡檢點 QR Code...';
-    setTimeout(() => { if (S.scanActive) simulateScan(); }, 4000);
-  } catch (e) { hint.textContent = '❌ 無法開啟相機，請使用模擬掃碼'; }
+    // 開始掃描循環
+    S.scanLoopId = requestAnimationFrame(scanLoop);
+  } catch (e) {
+    hint.textContent = '❌ 無法開啟相機：' + e.message;
+    showToast('無法開啟相機，請確認權限', 'err');
+  }
+}
+
+async function scanLoop() {
+  if (!S.scanActive) return;
+  const video = document.getElementById('video-el');
+  if (!video || video.readyState < 2) {
+    S.scanLoopId = requestAnimationFrame(scanLoop);
+    return;
+  }
+  try {
+    // 優先使用瀏覽器原生 BarcodeDetector（Chrome 88+）
+    if ('BarcodeDetector' in window) {
+      if (!S._barcodeDetector) {
+        S._barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+      }
+      const barcodes = await S._barcodeDetector.detect(video);
+      if (barcodes.length > 0) {
+        handleScanResult(barcodes[0].rawValue);
+        return;
+      }
+    } else {
+      // Fallback：用 canvas 截圖後傳給 jsQR
+      if (typeof jsQR !== 'undefined') {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        if (code) {
+          handleScanResult(code.data);
+          return;
+        }
+      }
+    }
+  } catch (e) { /* 繼續掃描 */ }
+  // 每 200ms 掃一次
+  setTimeout(() => { if (S.scanActive) S.scanLoopId = requestAnimationFrame(scanLoop); }, 200);
+}
+
+function handleScanResult(rawValue) {
+  stopScan();
+  try {
+    const data = JSON.parse(rawValue);
+    if (data.sys !== 'FACTORY_PATROL' || !data.loc) {
+      showToast('❌ 這不是本系統的 QR Code', 'err'); return;
+    }
+    document.getElementById('scannerHint').textContent = `✅ 識別成功：${data.name || data.loc}`;
+    processScan(data.loc);
+  } catch (e) {
+    showToast('❌ QR Code 格式無法識別', 'err');
+  }
 }
 function stopScan() {
   if (S.scanStream) { S.scanStream.getTracks().forEach(t => t.stop()); S.scanStream = null; }
+  if (S.scanLoopId) { cancelAnimationFrame(S.scanLoopId); S.scanLoopId = null; }
   S.scanActive = false;
+  S._barcodeDetector = null;
   document.getElementById('viewfinderWrap').classList.remove('show');
   document.getElementById('startScanBtn').classList.remove('hidden');
   document.getElementById('stopScanBtn').classList.add('hidden');
