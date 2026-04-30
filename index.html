@@ -326,6 +326,8 @@ tr:last-child td{border-bottom:none;}
 .sched-sub-tab{flex-shrink:0;padding:12px 16px;font-size:13px;font-weight:600;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;font-family:inherit;}
 .sched-sub-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
 .sched-sub-tab:hover:not(.active){color:var(--text);}
+.onetime-filter-btn.active{color:var(--accent)!important;border-bottom-color:var(--accent)!important;}
+.onetime-filter-btn:hover:not(.active){color:var(--text)!important;}
 
 /* CHARTS */
 .kpi-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;}
@@ -500,8 +502,21 @@ tr:last-child td{border-bottom:none;}
     </div>
 
     <!-- 子頁籤內容 -->
-    <div style="padding:16px" id="myScheduleList">
-      <div class="empty-state"><div class="empty-icon">⏳</div><p>載入中...</p></div>
+    <div id="myScheduleList">
+      <!-- 指定日期專屬：進行中 / 已結案 切換列（只在 one_time 時顯示） -->
+      <div id="onetimeFilterRow" class="hidden" style="display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--bg3)">
+        <button class="onetime-filter-btn active" id="otf-btn-active" onclick="switchOneTimeFilter('active')"
+          style="flex:1;padding:10px;font-size:13px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:all .2s;font-family:inherit">
+          🔄 進行中
+        </button>
+        <button class="onetime-filter-btn" id="otf-btn-closed" onclick="switchOneTimeFilter('closed')"
+          style="flex:1;padding:10px;font-size:13px;font-weight:600;border:none;background:none;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:all .2s;font-family:inherit">
+          ✅ 已結案
+        </button>
+      </div>
+      <div style="padding:16px" id="myScheduleInner">
+        <div class="empty-state"><div class="empty-icon">⏳</div><p>載入中...</p></div>
+      </div>
     </div>
   </div>
 
@@ -1691,73 +1706,113 @@ function hexToRgb(hex) {
   return `${r},${g},${b}`;
 }
 S._activeSchedTab = 'weekly';
+S._activeOneTimeFilter = 'active'; // 'active' | 'closed'
 
 function switchSchedTab(type) {
   S._activeSchedTab = type;
   document.querySelectorAll('.sched-sub-tab').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById('subtab-btn-' + type);
   if (btn) btn.classList.add('active');
+
+  // 顯示/隱藏指定日期的進行中/已結案切換列
+  const filterRow = document.getElementById('onetimeFilterRow');
+  if (filterRow) filterRow.style.display = type === 'one_time' ? 'flex' : 'none';
+
+  // 切換時重設為進行中
+  if (type === 'one_time') {
+    S._activeOneTimeFilter = 'active';
+    document.querySelectorAll('.onetime-filter-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('otf-btn-active')?.classList.add('active');
+  }
+
+  renderMySchedules();
+}
+
+function switchOneTimeFilter(filter) {
+  S._activeOneTimeFilter = filter;
+  document.querySelectorAll('.onetime-filter-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('otf-btn-' + filter)?.classList.add('active');
   renderMySchedules();
 }
 
 function renderMySchedules() {
-  const list = document.getElementById('myScheduleList');
+  const list = document.getElementById('myScheduleInner');
   if (!list) return;
   const activeType = S._activeSchedTab || 'weekly';
 
   let scheds = S.schedules;
   if (S.currentRole !== 'manager') scheds = scheds.filter(s => s.staff === S.currentUser);
 
-  // 只顯示目前選中的類型
-  const filtered = scheds.filter(s => s.schedule_type === activeType);
-
-  // 更新子頁籤 badge 數量
+  // 更新子頁籤 badge（one_time 只計進行中件數）
   ['weekly','monthly_date','one_time'].forEach(type => {
     const btn = document.getElementById('subtab-btn-' + type);
     if (!btn) return;
-    const count = scheds.filter(s => s.schedule_type === type).length;
-    // 清除舊 badge
-    const old = btn.querySelector('.sub-badge');
-    if (old) old.remove();
+    const count = type === 'one_time'
+      ? scheds.filter(s => s.schedule_type === type && s.status !== 'closed').length
+      : scheds.filter(s => s.schedule_type === type).length;
+    const old = btn.querySelector('.sub-badge'); if (old) old.remove();
     if (count > 0) {
       const span = document.createElement('span');
-      span.className = 'sub-badge tab-badge';
-      span.style.marginLeft = '5px';
-      span.textContent = count;
+      span.className = 'sub-badge tab-badge'; span.style.marginLeft = '5px'; span.textContent = count;
       btn.appendChild(span);
     }
   });
 
-  if (!filtered.length) {
-    const typeLabel = { weekly: '週巡檢', monthly_date: '每月固定日', one_time: '指定日期' };
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📅</div><p>目前無${typeLabel[activeType]}排程</p></div>`;
-    // 更新逾期紅點
-    const myPending = S.schedules.filter(s => s.staff === S.currentUser && s.status === 'overdue').length;
-    const badge = document.getElementById('mySchedBadge');
-    if (badge) { badge.textContent = myPending; badge.style.display = myPending ? '' : 'none'; }
+  // 篩選類型
+  let filtered = scheds.filter(s => s.schedule_type === activeType);
+
+  // 指定日期依 進行中/已結案 篩選
+  if (activeType === 'one_time') {
+    const f = S._activeOneTimeFilter || 'active';
+    filtered = f === 'closed'
+      ? filtered.filter(s => s.status === 'closed')
+      : filtered.filter(s => s.status !== 'closed');
+  }
+
+  // 排序
+  let sorted;
+  if (activeType === 'weekly') {
+    sorted = [...filtered].sort((a, b) => {
+      const t = a.title.localeCompare(b.title, 'zh-TW'); if (t !== 0) return t;
+      return (a.start_time || '').localeCompare(b.start_time || '');
+    });
+  } else if (activeType === 'monthly_date') {
+    sorted = [...filtered].sort((a, b) => {
+      const t = a.title.localeCompare(b.title, 'zh-TW'); if (t !== 0) return t;
+      return (parseInt(a.monthly_day) || 0) - (parseInt(b.monthly_day) || 0);
+    });
+  } else {
+    sorted = [...filtered].sort((a, b) =>
+      (a.specific_date || '9999').localeCompare(b.specific_date || '9999'));
+  }
+
+  const myPending = S.schedules.filter(s => s.staff === S.currentUser && s.status === 'overdue').length;
+  const badge = document.getElementById('mySchedBadge');
+  if (badge) { badge.textContent = myPending; badge.style.display = myPending ? '' : 'none'; }
+
+  if (!sorted.length) {
+    const isClosed = activeType === 'one_time' && S._activeOneTimeFilter === 'closed';
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📅</div><p>${isClosed ? '尚無已結案的指定日期排程' : `目前無排程`}</p></div>`;
     return;
   }
 
   const statusMap = {
     pending_approval: { label: '待核可', cls: 'badge-purple' },
-    active: { label: '進行中', cls: 'badge-green' },
-    overdue: { label: '逾期', cls: 'badge-red' },
-    closed: { label: '已關閉', cls: 'badge-gray' },
+    active:           { label: '進行中', cls: 'badge-green' },
+    overdue:          { label: '逾期',   cls: 'badge-red' },
+    closed:           { label: '已結案', cls: 'badge-gray' },
   };
 
-  list.innerHTML = filtered.map(s => {
+  list.innerHTML = sorted.map(s => {
     const sm = statusMap[s.status] || { label: s.status, cls: 'badge-gray' };
-    let dateInfo = '';
-    if (s.schedule_type === 'weekly') dateInfo = `每隔 ${s.weekday || 1} 週`;
-    else if (s.schedule_type === 'monthly_date') dateInfo = `每月 ${s.monthly_day} 號前完成`;
-    else if (s.schedule_type === 'one_time') dateInfo = `完成期限：${s.specific_date}`;
-
-    const isTaskType = s.schedule_type !== 'weekly';
-    const canComplete = isTaskType && s.status === 'active' && (S.currentRole !== 'manager' ? s.staff === S.currentUser : true);
+    const dateInfo = s.schedule_type === 'weekly' ? `每隔 ${s.weekday || 1} 週`
+      : s.schedule_type === 'monthly_date' ? `每月 ${s.monthly_day} 號前完成`
+      : `完成期限：${s.specific_date}`;
+    const isClosed = s.status === 'closed';
+    const canComplete = s.schedule_type !== 'weekly' && s.status === 'active' && (S.currentRole !== 'manager' ? s.staff === S.currentUser : true);
     const canReschedule = s.schedule_type === 'one_time' && s.status === 'active' && S.currentRole !== 'manager';
-
     return `
-      <div class="approval-card">
+      <div class="approval-card" ${isClosed ? 'style="opacity:0.7"' : ''}>
         <div class="approval-card-header">
           <div style="flex:1;min-width:0">
             <div class="approval-title">${s.title}</div>
@@ -1777,7 +1832,7 @@ function renderMySchedules() {
             <button class="btn btn-accent btn-sm" onclick="openReassignRequest(${s.id})">🔄 申請重新指派</button>
           </div>` : ''}
         ${s.status === 'overdue' && S.currentRole === 'manager' ? `<div class="alert alert-warning" style="margin-bottom:0;margin-top:8px;font-size:12px">⏰ 已逾期</div>` : ''}
-        ${(canComplete || canReschedule || S.currentRole === 'manager') ? `
+        ${!isClosed && (canComplete || canReschedule || S.currentRole === 'manager') ? `
           <div class="approval-actions" style="margin-top:10px">
             ${canComplete ? `<button class="btn btn-green btn-sm" onclick="openTaskComplete(${s.id})">✅ 完成任務</button>` : ''}
             ${canReschedule ? `<button class="btn btn-ghost btn-sm" onclick="openChangeRequest(${s.id})">🔄 申請改期</button>` : ''}
@@ -1786,10 +1841,6 @@ function renderMySchedules() {
           </div>` : ''}
       </div>`;
   }).join('');
-
-  const myPending = S.schedules.filter(s => s.staff === S.currentUser && s.status === 'overdue').length;
-  const badge = document.getElementById('mySchedBadge');
-  if (badge) { badge.textContent = myPending; badge.style.display = myPending ? '' : 'none'; }
 }
 
 // ══════════════════════════════════════
@@ -1988,7 +2039,9 @@ function renderLocations() {
   const list = document.getElementById('locationList');
   if (!list) return;
   if (!S.locations.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">📍</div><p>尚無巡檢地點</p></div>'; return; }
-  list.innerHTML = S.locations.map(l => `
+  // 依名稱排序
+  const sorted = [...S.locations].sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
+  list.innerHTML = sorted.map(l => `
     <div style="padding:12px 0;border-bottom:1px solid var(--border2)">
       <div style="display:flex;align-items:center;gap:12px">
         <div style="width:36px;height:36px;border-radius:10px;background:rgba(240,165,0,.1);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">📍</div>
@@ -2012,14 +2065,15 @@ function renderQRGrid() {
   const grid = document.getElementById('qrGrid');
   if (!grid) return;
   if (!S.locations.length) { grid.innerHTML = '<div class="empty-state"><div class="empty-icon">🔲</div><p>請先新增巡檢地點</p></div>'; return; }
-  grid.innerHTML = S.locations.map(l => `
+  const sorted = [...S.locations].sort((a, b) => a.name.localeCompare(b.name, 'zh-TW'));
+  grid.innerHTML = sorted.map(l => `
     <div class="qr-print-card" onclick="showQRModal('${l.id}')">
       <div class="qr-print-img" id="qrthumb_${l.id}"></div>
       <div class="qr-print-name">${l.name}</div>
       <div class="qr-print-sub">${l.building}</div>
     </div>
   `).join('');
-  setTimeout(() => S.locations.forEach(l => {
+  setTimeout(() => sorted.forEach(l => {
     const el = document.getElementById('qrthumb_' + l.id);
     if (!el || el.childElementCount > 0) return;
     const img = document.createElement('img');
